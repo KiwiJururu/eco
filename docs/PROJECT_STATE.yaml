@@ -44,7 +44,23 @@ validated_features:
 current_priority:
   phase: infrastructure
   goal: externalize project memory and make development faster/autonomous
-  next_gameplay_batch_after_infrastructure: aquatic_and_flying_social_ecology
+  active_gameplay_issue_after_infrastructure: 7
+  active_gameplay_batch: aquatic_schools_and_amphibious_ecology
+
+backlog_issues:
+  aquatic: 7
+  flying_passive_colony: 8
+  common_passive_land: 9
+  terrestrial_predators: 10
+  skeleton_undead_combat: 11
+  common_hostile_nether: 12
+  end_cave_special: 13
+  villages_golems: 14
+  piglin_society: 15
+  illager_society: 16
+  guardian_society: 17
+  bosses_special: 18
+  final_regression: 19
 
 human_visual_qa:
   status: PENDING
