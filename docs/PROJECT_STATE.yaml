@@ -1,0 +1,63 @@
+project: Living Ecology
+minecraft: 1.20.1
+loader: Forge
+java: 17
+repository: KiwiJururu/eco
+source_root: Eco
+
+branches:
+  release: main
+  stable_development: development/stable
+  legacy_stable_alias: development/qa-0.1.0
+  current_infrastructure_work: infrastructure/autonomous-dev-0.2.0
+
+validated_baseline:
+  commit: d1903a31d608991d0453ed45571cfb6950964e6c
+  version: 0.1.x-development
+  compileJava: PASS
+  junit: PASS
+  forge_gametests: PASS
+  forge_gametest_count: 11
+  build: PASS
+  jar_artifact: PASS
+
+catalogue:
+  supported_species: 79
+  catalogue_instantiation_test: PASS
+  all_profiles_present: true
+  all_species_specific_behavior_validated: false
+
+validated_features:
+  - Cow specialized herd behavior
+  - Wolf specialized territory/patrol/war behavior
+  - Spider and Cave Spider specialized territorial behavior
+  - Zombie-family mixed horde behavior: Zombie, Zombie Villager, Husk, Drowned
+  - Mooshroom specialized bovine behavior with species-aware habitat
+  - PASSIVE_HERD local social alarm with decaying relay confidence
+  - Creative/Spectator hostile-target exclusion
+  - territory persistence core
+  - reproduction/capacity core for vanilla-love species
+  - birth territory inheritance and population growth
+  - footprint target budget invariants
+  - behavior-family representative smoke test
+
+current_priority:
+  phase: infrastructure
+  goal: externalize project memory and make development faster/autonomous
+  next_gameplay_batch_after_infrastructure: aquatic_and_flying_social_ecology
+
+human_visual_qa:
+  status: PENDING
+  owner: user
+  scope: naturalness, pacing, visual density, Minecraft feel
+
+assets:
+  strategy: vanilla_first
+  new_textures_required: false
+
+blocking_issues: []
+
+operating_rule: >-
+  Continue implementing and testing autonomously. Do not advance a family while it has known
+  objective bugs. Ask the user only for genuine design decisions, visual-asset requirements,
+  destructive-risk choices, or irreducible gameplay tradeoffs.
