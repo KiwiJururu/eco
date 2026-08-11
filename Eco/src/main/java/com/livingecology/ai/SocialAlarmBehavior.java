@@ -18,8 +18,8 @@ import java.util.Optional;
  *
  * This is deliberately not a global group brain: the receiver must be close enough to perceive a
  * same-species groupmate, and the reported threat must still be within a plausible extended
- * perception radius. Information can therefore travel through a herd over time without becoming
- * instantaneous telepathy across a territory.
+ * perception radius. Confidence decays as information is relayed, so a warning may cross a few
+ * nearby animals without becoming permanent territory-wide telepathy.
  */
 public final class SocialAlarmBehavior {
     private SocialAlarmBehavior() {}
@@ -47,9 +47,13 @@ public final class SocialAlarmBehavior {
             // A current target is a strong alarm. Memory-only reports need a meaningful score so weak,
             // stale impressions are not amplified indefinitely through a herd.
             boolean directAlarm = ally.getTarget() == threat;
-            if (!directAlarm && MobMindData.threatScore(ally) < 20) continue;
+            int sourceScore = MobMindData.threatScore(ally);
+            if (!directAlarm && sourceScore < 20) continue;
 
-            int strength = 4 + social / 20;
+            // Each relay loses confidence. Direct alarms start strong; remembered reports are roughly
+            // halved on each hop, eventually falling below the 20-point threshold required to relay again.
+            int effectiveSource = directAlarm ? Math.max(60, sourceScore) : sourceScore;
+            int strength = Math.max(6, Math.min(45, effectiveSource / 2 + social / 20));
             MobMindData.rememberThreat(mob, threat, strength, level);
             MobMindData.addState(mob, StateType.FEAR, 1);
             MobMindData.setResting(mob, false);
