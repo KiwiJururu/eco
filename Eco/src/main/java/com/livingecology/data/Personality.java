@@ -16,7 +16,8 @@ public enum Personality {
     PROTECTIVE("Protetor"),
     INDEPENDENT("Independente"),
     STUBBORN("Teimoso"),
-    SOCIABLE("Sociável");
+    SOCIABLE("Sociável"),
+    DILIGENT("Trabalhador");
 
     private final String displayName;
 
@@ -74,6 +75,11 @@ public enum Personality {
                 out.put(AttributeType.CONSTITUTION, 5);
             }
             case SOCIABLE -> out.put(AttributeType.SOCIABILITY, 15);
+            case DILIGENT -> {
+                out.put(AttributeType.ALERT, 5);
+                out.put(AttributeType.SOCIABILITY, 5);
+                out.put(AttributeType.INSTINCT, 5);
+            }
             case NORMAL -> { }
         }
         return out;

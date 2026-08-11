@@ -1,5 +1,7 @@
 package com.livingecology.territory;
 
+import com.livingecology.data.FootprintType;
+import com.livingecology.data.SpeciesProfile;
 import com.livingecology.data.SpeciesType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -72,8 +74,25 @@ public final class TerritoryRecord {
     public void setLeader(UUID leader) { this.leader = leader; }
 
     public int desiredFootprint() {
-        if (species != SpeciesType.SPIDER || state == TerritoryState.ABANDONED || population <= 0) return 0;
-        return Mth.clamp(6 + maturity / 3 + pressure / 5 + population * 2, 6, 96);
+        FootprintType type = SpeciesProfile.of(species).footprintType();
+        if (type == FootprintType.NONE || state == TerritoryState.ABANDONED || population <= 0) return 0;
+        int base = switch (type) {
+            case COBWEB -> 6;
+            case FLOWERS -> 4;
+            case TRAIL -> 3;
+            case BURROW -> 3;
+            case MUSHROOMS -> 4;
+            case NONE -> 0;
+        };
+        int cap = switch (type) {
+            case COBWEB -> 96;
+            case FLOWERS -> 48;
+            case TRAIL -> 36;
+            case BURROW -> 28;
+            case MUSHROOMS -> 44;
+            case NONE -> 0;
+        };
+        return Mth.clamp(base + maturity / 5 + pressure / 7 + population, base, cap);
     }
 
     public CompoundTag save() {

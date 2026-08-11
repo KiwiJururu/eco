@@ -29,7 +29,8 @@ public final class ModCommands {
                                     ServerLevel level = ctx.getSource().getLevel();
                                     TerritoryManager.setSimulationScale(level, scale);
                                     ctx.getSource().sendSuccess(() -> Component.literal(
-                                            "Living Ecology timescale alterado para x" + scale), true);
+                                            "Living Ecology timescale alterado para x" + scale
+                                                    + (scale > 1.0D ? " (mobs do protótipo protegidos de despawn natural perto de observadores)" : "")), true);
                                     return 1;
                                 })))
                 .then(Commands.literal("debug")

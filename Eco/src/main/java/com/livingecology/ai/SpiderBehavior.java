@@ -47,36 +47,52 @@ public final class SpiderBehavior {
             return;
         }
 
-        LivingEntity target = spider.getTarget();
-        if (target == null || !target.isAlive()) target = null;
+        LivingEntity vanillaTarget = spider.getTarget();
+        if (!BehaviorUtil.isValidCombatTarget(vanillaTarget)) vanillaTarget = null;
+        LivingEntity ecologicalTarget = null;
 
-        // Spider <-> Zombie symbiosis: local, incomplete information; helping strengthens acquired affinity.
-        if (target == null) {
-            for (Mob zombie : BehaviorUtil.species(level, spider.blockPosition(), SpeciesType.ZOMBIE, range)) {
-                Optional<LivingEntity> allyThreat = MobMindData.resolveThreat(zombie, level);
-                if (allyThreat.isPresent()) {
-                    LivingEntity threat = allyThreat.get();
-                    if ((SpeciesType.from(threat).orElse(null) == SpeciesType.WOLF || threat instanceof Player)
-                            && spider.distanceTo(threat) <= range * 1.2D) {
-                        target = threat;
-                        TerritoryManager.recordCooperation(spider, zombie, level, 1);
-                        break;
-                    }
+        // Spider <-> Zombie symbiosis. This is checked before the vanilla target so the player no longer
+        // monopolizes every hostile interaction simply by standing nearby.
+        for (Mob zombie : level.getEntitiesOfClass(Mob.class, spider.getBoundingBox().inflate(range), m -> {
+            SpeciesType type = SpeciesType.from(m).orElse(null);
+            return type == SpeciesType.ZOMBIE || type == SpeciesType.ZOMBIE_VILLAGER || type == SpeciesType.HUSK
+                    || type == SpeciesType.DROWNED || type == SpeciesType.GIANT;
+        })) {
+            Optional<LivingEntity> allyThreat = MobMindData.resolveThreat(zombie, level);
+            if (allyThreat.isPresent()) {
+                LivingEntity threat = allyThreat.get();
+                if (BehaviorUtil.isValidCombatTarget(threat)
+                        && (SpeciesType.from(threat).orElse(null) == SpeciesType.WOLF || threat instanceof Player)
+                        && spider.distanceTo(threat) <= range * 1.2D) {
+                    ecologicalTarget = threat;
+                    TerritoryManager.recordCooperation(spider, zombie, level, 1);
+                    break;
                 }
             }
         }
 
-        if (target == null && territory != null) {
-            // Territorial response scales strongly from inner zone to core.
-            Optional<LivingEntity> intruder = BehaviorUtil.nearestLiving(spider, level, range, e -> {
-                boolean relevant = SpeciesType.from(e).orElse(null) == SpeciesType.WOLF || e instanceof Player;
-                if (!relevant) return false;
-                TerritoryZone z = TerritoryManager.zoneFor(territory, e.blockPosition());
-                return z == TerritoryZone.CORE || (z == TerritoryZone.INNER
-                        && MobMindData.getAttribute(spider, AttributeType.TERRITORY) >= 55);
-            });
-            target = intruder.orElse(null);
+        if (territory != null) {
+            // A Wolf deep in the nest has priority over a generic vanilla Player target.
+            Optional<Mob> wolfIntruder = BehaviorUtil.nearestSpecies(spider, level, SpeciesType.WOLF, range)
+                    .filter(w -> {
+                        TerritoryZone z = TerritoryManager.zoneFor(territory, w.blockPosition());
+                        return z == TerritoryZone.CORE || (z == TerritoryZone.INNER
+                                && MobMindData.getAttribute(spider, AttributeType.TERRITORY) >= 55);
+                    });
+            if (wolfIntruder.isPresent()) ecologicalTarget = wolfIntruder.get();
+
+            if (ecologicalTarget == null) {
+                Optional<LivingEntity> intruder = BehaviorUtil.nearestLiving(spider, level, range, e -> {
+                    if (!(e instanceof Player)) return false;
+                    TerritoryZone z = TerritoryManager.zoneFor(territory, e.blockPosition());
+                    return z == TerritoryZone.CORE || (z == TerritoryZone.INNER
+                            && MobMindData.getAttribute(spider, AttributeType.TERRITORY) >= 55);
+                });
+                ecologicalTarget = intruder.orElse(null);
+            }
         }
+
+        LivingEntity target = ecologicalTarget != null ? ecologicalTarget : vanillaTarget;
 
         if (context.noMansLand() && target == null && territory != null) {
             spider.getNavigation().moveTo(territory.core().getX() + 0.5D, territory.core().getY(),
@@ -88,14 +104,18 @@ public final class SpiderBehavior {
         boolean exposedDay = level.isDay() && level.canSeeSky(spider.blockPosition());
         if (target != null) {
             boolean weakReasonToFight = exposedDay && context.ownZone() == TerritoryZone.OUTER
-                    && MobMindData.threatScore(spider) < 30 && context.tension() < 60;
+                    && MobMindData.threatScore(spider) < 30 && context.tension() < 60
+                    && !(target instanceof Mob m && SpeciesType.from(m).orElse(null) == SpeciesType.WOLF);
             if (weakReasonToFight) {
                 spider.setTarget(null);
             } else {
                 spider.setTarget(target);
                 MobMindData.rememberThreat(spider, target, 5, level);
                 MobMindData.setResting(spider, false);
-                if (adaptation >= 60 && spider.distanceTo(target) > 3.5F) {
+                boolean stalled = MobMindData.movementStalled(spider, level, 30, 0.50D);
+                if (adaptation >= 60 && spider.distanceTo(target) > 3.5F
+                        && (spider.getNavigation().isDone() || stalled)) {
+                    if (stalled) spider.getNavigation().stop();
                     spider.getNavigation().moveTo(target, 1.15D);
                 }
                 return;

@@ -1,5 +1,7 @@
 package com.livingecology.environment;
 
+import com.livingecology.data.BehaviorFamily;
+import com.livingecology.data.SpeciesProfile;
 import com.livingecology.data.SpeciesType;
 import com.livingecology.territory.TerritorySavedData;
 import net.minecraft.core.BlockPos;
@@ -37,18 +39,34 @@ public final class EnvironmentManager {
             coverage = Mth.clamp(50 + state.coverageDelta(), 0, 100);
             stability = Mth.clamp(50 + state.stabilityDelta(), 0, 100);
         }
-        int habitability = calculateHabitability(species, resources, coverage, stability);
+        int habitability = calculateHabitability(level, pos, species, resources, coverage, stability);
         return new EnvironmentSnapshot(resources, coverage, stability, habitability);
     }
 
-    private static int calculateHabitability(SpeciesType species, int resources, int coverage, int stability) {
-        double value = switch (species) {
-            case COW -> resources * 0.40D + coverage * 0.30D + stability * 0.30D;
-            case WOLF -> resources * 0.38D + coverage * 0.32D + stability * 0.30D;
-            case SPIDER -> resources * 0.15D + coverage * 0.45D + stability * 0.40D;
-            case ZOMBIE -> 35.0D + (100 - stability) * 0.35D + coverage * 0.15D;
-        };
-        return Mth.clamp((int) Math.round(value), 0, 100);
+    private static int calculateHabitability(ServerLevel level, BlockPos pos, SpeciesType species,
+                                             int resources, int coverage, int stability) {
+        SpeciesProfile profile = SpeciesProfile.of(species);
+        int habitatFit = HabitatRules.fit(level, pos, species);
+        BehaviorFamily family = profile.behaviorFamily();
+
+        double environmental = resources * 0.36D + coverage * 0.31D + stability * 0.33D;
+        if (profile.movementDomain() == com.livingecology.data.MovementDomain.WATER
+                || profile.movementDomain() == com.livingecology.data.MovementDomain.AMPHIBIOUS) {
+            environmental = resources * 0.36D + coverage * 0.18D + stability * 0.46D;
+        }
+        if (family == BehaviorFamily.ARTHROPOD) {
+            environmental = resources * 0.15D + coverage * 0.43D + stability * 0.42D;
+        } else if (family == BehaviorFamily.UNDEAD_HORDE || family == BehaviorFamily.UNDEAD_COMBAT) {
+            // Degraded/unstable places can favour undead occupation without making every ruin automatically ideal.
+            environmental = 40.0D + (100 - stability) * 0.25D + coverage * 0.18D + resources * 0.08D;
+        } else if (profile.habitatClass() == com.livingecology.data.HabitatClass.NETHER
+                || profile.habitatClass() == com.livingecology.data.HabitatClass.END
+                || profile.habitatClass() == com.livingecology.data.HabitatClass.LAVA) {
+            environmental = stability * 0.45D + coverage * 0.25D + resources * 0.30D;
+        }
+
+        double result = environmental * 0.68D + habitatFit * 0.32D;
+        return Mth.clamp((int) Math.round(result), 0, 100);
     }
 
     public static void onNaturalBlockBroken(ServerLevel level, BlockPos pos, BlockState state) {

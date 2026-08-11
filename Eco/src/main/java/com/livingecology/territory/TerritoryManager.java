@@ -2,9 +2,11 @@ package com.livingecology.territory;
 
 import com.livingecology.ai.BehaviorUtil;
 import com.livingecology.data.AttributeType;
+import com.livingecology.data.FootprintType;
 import com.livingecology.data.MobMindData;
 import com.livingecology.data.SpeciesProfile;
 import com.livingecology.data.SpeciesType;
+import com.livingecology.environment.EcologyMath;
 import com.livingecology.environment.EnvironmentManager;
 import com.livingecology.environment.EnvironmentSavedData;
 import com.livingecology.environment.EnvironmentSnapshot;
@@ -15,7 +17,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.animal.Wolf;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -36,7 +39,11 @@ public final class TerritoryManager {
     public static TerritoryRecord ensureTerritory(Mob mob, ServerLevel level) {
         SpeciesType species = SpeciesType.from(mob).orElse(null);
         if (species == null) return null;
-        if (species == SpeciesType.WOLF && mob instanceof Wolf wolf && wolf.isTame()) return null;
+        SpeciesProfile profile = SpeciesProfile.of(species);
+        if (isPlayerBound(mob) || !profile.formsPersistentTerritory(MobMindData.isBoss(mob))) {
+            if (MobMindData.territoryId(mob) != 0L) MobMindData.setTerritoryId(mob, 0L);
+            return null;
+        }
 
         TerritorySavedData data = TerritorySavedData.get(level);
         long currentId = MobMindData.territoryId(mob);
@@ -60,11 +67,9 @@ public final class TerritoryManager {
         if (now < MobMindData.nextTerritoryCheck(mob)) return null;
         MobMindData.setNextTerritoryCheck(mob, now + 200L);
 
-        SpeciesProfile profile = SpeciesProfile.of(species);
         List<Mob> same = level.getEntitiesOfClass(Mob.class,
                 mob.getBoundingBox().inflate(profile.territorySearchRadius()),
-                e -> e.isAlive() && species.matches(e)
-                        && !(e instanceof Wolf w && w.isTame()));
+                e -> e.isAlive() && species.matches(e) && !isPlayerBound(e));
         int minimum = MobMindData.isBoss(mob) ? 1 : profile.territoryFormationMinimum();
         if (same.size() < minimum) return null;
 
@@ -78,7 +83,8 @@ public final class TerritoryManager {
         long seed = HashNoise.combine(level.getSeed(), center.asLong(), species.ordinal() * 341873128712L);
         int maturity = 20 + HashNoise.bounded(seed ^ 0x55aa55aa55aa55aaL, 61); // procedural "history before discovery"
         int territoriality = MobMindData.getAttribute(mob, AttributeType.TERRITORY);
-        int radius = Mth.clamp(2 + territoriality / 25 + Math.min(2, same.size() / 4), 2, maxRadius(species));
+        int maxRadius = Math.max(2, profile.maxTerritoryRadius());
+        int radius = Mth.clamp(2 + territoriality / 25 + Math.min(2, same.size() / 4), 2, maxRadius);
         int pressure = Mth.clamp(25 + same.size() * 5 + maturity / 3, 15, 90);
 
         TerritoryRecord created = data.create(species, center, center, radius, pressure, maturity,
@@ -90,15 +96,6 @@ public final class TerritoryManager {
         }
         data.setDirty();
         return created;
-    }
-
-    private static int maxRadius(SpeciesType species) {
-        return switch (species) {
-            case COW -> 6;
-            case WOLF -> 7;
-            case SPIDER -> 6;
-            case ZOMBIE -> 7;
-        };
     }
 
     private static void updateActiveTerritories(ServerLevel level) {
@@ -141,11 +138,16 @@ public final class TerritoryManager {
             record.setMaturity(record.maturity() - (int) maturitySteps);
         }
 
-        int target = Mth.clamp(18 + record.population() * 5 + record.maturity() / 3
-                + (env.habitability() - 50) / 3, 0, 100);
+        int target = EcologyMath.pressureTarget(record.population(), record.maturity(), env.habitability(),
+                record.state() == TerritoryState.ABANDONED);
         int maxChange = (int) Math.min(30L, steps / 2L + 1L);
-        if (record.state() == TerritoryState.ABANDONED) target = Math.min(target, 10);
         record.setPressure(approach(record.pressure(), target, maxChange));
+
+        SpeciesProfile profile = SpeciesProfile.of(record.species());
+        if (profile.maxTerritoryRadius() > 0 && record.state() != TerritoryState.ABANDONED) {
+            int desiredRadius = EcologyMath.desiredRadius(profile, record.radiusChunks(), record.population(), env.habitability());
+            if (desiredRadius != record.radiusChunks()) record.setRadiusChunks(desiredRadius);
+        }
 
         if (record.population() <= 0 && record.pressure() <= 8) record.setState(TerritoryState.ABANDONED);
         else if (record.state() == TerritoryState.ABANDONED && record.population() > 0) record.setState(TerritoryState.RECOVERING);
@@ -163,8 +165,7 @@ public final class TerritoryManager {
     private static boolean updateLoadedPopulation(TerritoryRecord record, ServerLevel level) {
         double radius = record.radiusChunks() * 16.0D * 1.15D;
         List<Mob> loaded = level.getEntitiesOfClass(Mob.class, new AABB(record.center()).inflate(radius),
-                e -> e.isAlive() && record.species().matches(e)
-                        && !(e instanceof Wolf w && w.isTame()));
+                e -> e.isAlive() && record.species().matches(e) && !isPlayerBound(e));
         int actual = loaded.size();
         int old = record.population();
         if (actual > 0) {
@@ -270,19 +271,17 @@ public final class TerritoryManager {
     }
 
     private static int territoryPower(TerritoryRecord record) {
-        int constitutionMid = switch (record.species()) {
-            case COW -> 63;
-            case WOLF -> 65;
-            case SPIDER -> 48;
-            case ZOMBIE -> 73;
-        };
-        return record.pressure() + record.population() * 3 + constitutionMid / 2
+        SpeciesProfile profile = SpeciesProfile.of(record.species());
+        int constitutionMid = profile.midpoint(AttributeType.CONSTITUTION);
+        int socialMid = profile.midpoint(AttributeType.SOCIABILITY);
+        return record.pressure() + record.population() * 3 + constitutionMid / 2 + socialMid / 5
                 + (record.leader() != null ? 12 : 0);
     }
 
     private static void conquestStep(ServerLevel level, TerritorySavedData data, TerritoryRecord winner,
                                      TerritoryRecord loser, RelationRecord relation) {
-        winner.setRadiusChunks(Math.min(maxRadius(winner.species()), winner.radiusChunks() + 1));
+        int winnerMax = Math.max(2, SpeciesProfile.of(winner.species()).maxTerritoryRadius());
+        winner.setRadiusChunks(Math.min(winnerMax, winner.radiusChunks() + 1));
         loser.setRadiusChunks(Math.max(2, loser.radiusChunks() - 1));
         winner.addPressure(4);
         loser.addPressure(-8);
@@ -337,9 +336,7 @@ public final class TerritoryManager {
             tension = RelationService.tension(data, first, second, overlap);
             affinity = RelationService.effectiveAffinity(data, first, second);
             RelationshipProfile natural = RelationService.natural(first.species(), second.species());
-            boolean wolfSpider = (first.species() == SpeciesType.WOLF && second.species() == SpeciesType.SPIDER)
-                    || (first.species() == SpeciesType.SPIDER && second.species() == SpeciesType.WOLF);
-            noMansLand = wolfSpider && natural.kind() == RelationKind.BORDERED && overlap
+            noMansLand = natural.kind() == RelationKind.BORDERED && overlap
                     && tension >= 20 && tension < 70 && Math.abs(firstInfluence - secondInfluence) <= 15.0D;
             contested = overlap && tension >= 60;
         }
@@ -412,12 +409,28 @@ public final class TerritoryManager {
     public static void onCobwebBroken(ServerLevel level, BlockPos pos) {
         TerritorySavedData data = TerritorySavedData.get(level);
         TerritoryRecord spider = data.near(pos).stream()
-                .filter(r -> r.species() == SpeciesType.SPIDER && zoneFor(r, pos) != TerritoryZone.OUTSIDE)
+                .filter(r -> SpeciesProfile.of(r.species()).footprintType() == FootprintType.COBWEB
+                        && zoneFor(r, pos) != TerritoryZone.OUTSIDE)
                 .max(Comparator.comparingDouble(r -> influenceAt(r, pos))).orElse(null);
         if (spider == null) return;
         spider.addFootprintProgress(-1);
         if (zoneFor(spider, pos) == TerritoryZone.CORE) spider.addPressure(-1);
         data.setDirty();
+    }
+
+    /** Called by the vanilla breeding event. Births raise local population/pressure and can expand a healthy territory. */
+    public static void recordBirth(Mob parent, Mob child, ServerLevel level) {
+        TerritoryRecord territory = ensureTerritory(parent, level);
+        if (territory == null) return;
+        MobMindData.initialize(child, level);
+        MobMindData.setTerritoryId(child, territory.id());
+        territory.setPopulation(territory.population() + 1);
+        territory.addPressure(2);
+        EnvironmentSnapshot env = EnvironmentManager.snapshot(level, territory.center(), territory.species());
+        SpeciesProfile profile = SpeciesProfile.of(territory.species());
+        int desired = EcologyMath.desiredRadius(profile, territory.radiusChunks(), territory.population(), env.habitability());
+        if (desired > territory.radiusChunks()) territory.setRadiusChunks(desired);
+        TerritorySavedData.get(level).setDirty();
     }
 
     public static void boostBossTerritory(Mob boss, ServerLevel level) {
@@ -432,19 +445,20 @@ public final class TerritoryManager {
     private static void materializeFootprints(ServerLevel level, int blockBudget, int maxChecks) {
         if (blockBudget <= 0 || maxChecks <= 0) return;
         TerritorySavedData data = TerritorySavedData.get(level);
-        List<TerritoryRecord> spiders = activeTerritories(level).stream()
-                .filter(r -> r.species() == SpeciesType.SPIDER)
+        List<TerritoryRecord> records = activeTerritories(level).stream()
+                .filter(r -> SpeciesProfile.of(r.species()).footprintType() != FootprintType.NONE)
                 .sorted(Comparator.comparingLong(TerritoryRecord::id)).toList();
-        if (spiders.isEmpty()) return;
+        if (records.isEmpty()) return;
 
-        int start = (int) Math.floorMod(level.getGameTime(), spiders.size());
+        int start = (int) Math.floorMod(level.getGameTime(), records.size());
         int changed = 0;
         int checks = 0;
-        for (int offset = 0; offset < spiders.size() && changed < blockBudget && checks < maxChecks; offset++) {
-            TerritoryRecord record = spiders.get((start + offset) % spiders.size());
+        for (int offset = 0; offset < records.size() && changed < blockBudget && checks < maxChecks; offset++) {
+            TerritoryRecord record = records.get((start + offset) % records.size());
+            FootprintType type = SpeciesProfile.of(record.species()).footprintType();
             int desired = record.desiredFootprint();
             boolean grow = record.footprintProgress() < desired;
-            boolean decay = record.footprintProgress() > desired;
+            boolean decay = type == FootprintType.COBWEB && record.footprintProgress() > desired;
             if (!grow && !decay) continue;
 
             while (changed < blockBudget && checks < maxChecks) {
@@ -463,14 +477,13 @@ public final class TerritoryManager {
                         case OUTSIDE -> 0.0D;
                     };
                     if (HashNoise.unit(HashNoise.combine(record.seed(), cursor, 991L)) > chance) continue;
-                    if (tryPlaceCobweb(level, candidate)) {
+                    if (tryPlaceFootprint(level, record, type, candidate, cursor)) {
                         record.addFootprintProgress(1);
                         changed++;
                         break;
                     }
-                } else if (level.getBlockState(candidate).is(Blocks.COBWEB)
-                        && level.getNearestPlayer(candidate.getX() + 0.5D, candidate.getY() + 0.5D,
-                        candidate.getZ() + 0.5D, 7.0D, false) == null) {
+                } else if (type == FootprintType.COBWEB && level.getBlockState(candidate).is(Blocks.COBWEB)
+                        && noNearbyPlayer(level, candidate, 7.0D)) {
                     level.setBlock(candidate, Blocks.AIR.defaultBlockState(), 3);
                     record.addFootprintProgress(-1);
                     changed++;
@@ -479,6 +492,18 @@ public final class TerritoryManager {
             }
         }
         if (changed > 0 || checks > 0) data.setDirty();
+    }
+
+    private static boolean tryPlaceFootprint(ServerLevel level, TerritoryRecord record, FootprintType type,
+                                             BlockPos raw, int cursor) {
+        return switch (type) {
+            case COBWEB -> tryPlaceCobweb(level, raw);
+            case FLOWERS -> tryPlaceFlower(level, raw, record.seed(), cursor);
+            case TRAIL -> tryPlaceTrail(level, raw);
+            case BURROW -> tryPlaceBurrowMark(level, raw);
+            case MUSHROOMS -> tryPlaceMushroom(level, raw, record.seed(), cursor);
+            case NONE -> false;
+        };
     }
 
     private static BlockPos footprintCandidate(TerritoryRecord record, int cursor) {
@@ -493,11 +518,70 @@ public final class TerritoryManager {
         return record.core().offset(dx, dy, dz);
     }
 
+    private static BlockPos findSurface(ServerLevel level, BlockPos around) {
+        for (int d = 0; d <= 8; d++) {
+            int[] ys = d == 0 ? new int[]{around.getY()} : new int[]{around.getY() + d, around.getY() - d};
+            for (int y : ys) {
+                BlockPos ground = new BlockPos(around.getX(), y, around.getZ());
+                if (!level.hasChunkAt(ground)) continue;
+                BlockState state = level.getBlockState(ground);
+                if (!state.isAir() && level.getBlockState(ground.above()).isAir()) return ground;
+            }
+        }
+        return null;
+    }
+
+    private static boolean tryPlaceFlower(ServerLevel level, BlockPos raw, long seed, int cursor) {
+        BlockPos ground = findSurface(level, raw);
+        if (ground == null || !noNearbyPlayer(level, ground, 9.0D) || level.getBlockEntity(ground) != null) return false;
+        BlockState soil = level.getBlockState(ground);
+        if (!(soil.is(Blocks.GRASS_BLOCK) || soil.is(Blocks.DIRT) || soil.is(Blocks.PODZOL))) return false;
+        BlockPos pos = ground.above();
+        BlockState flower = switch (HashNoise.bounded(HashNoise.combine(seed, cursor, 0xabc11L), 4)) {
+            case 0 -> Blocks.DANDELION.defaultBlockState();
+            case 1 -> Blocks.POPPY.defaultBlockState();
+            case 2 -> Blocks.AZURE_BLUET.defaultBlockState();
+            default -> Blocks.OXEYE_DAISY.defaultBlockState();
+        };
+        return level.getBlockState(pos).isAir() && flower.canSurvive(level, pos) && level.setBlock(pos, flower, 3);
+    }
+
+    private static boolean tryPlaceTrail(ServerLevel level, BlockPos raw) {
+        BlockPos ground = findSurface(level, raw);
+        if (ground == null || !noNearbyPlayer(level, ground, 10.0D) || level.getBlockEntity(ground) != null) return false;
+        BlockState state = level.getBlockState(ground);
+        if (!state.is(Blocks.GRASS_BLOCK)) return false;
+        return level.setBlock(ground, Blocks.COARSE_DIRT.defaultBlockState(), 3);
+    }
+
+    private static boolean tryPlaceBurrowMark(ServerLevel level, BlockPos raw) {
+        BlockPos ground = findSurface(level, raw);
+        if (ground == null || !noNearbyPlayer(level, ground, 10.0D) || level.getBlockEntity(ground) != null) return false;
+        BlockState state = level.getBlockState(ground);
+        if (!(state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT))) return false;
+        // Visual sign only: never opens a hole, so terrain/pathfinding cannot be broken by the footprint system.
+        return level.setBlock(ground, Blocks.COARSE_DIRT.defaultBlockState(), 3);
+    }
+
+    private static boolean tryPlaceMushroom(ServerLevel level, BlockPos raw, long seed, int cursor) {
+        BlockPos ground = findSurface(level, raw);
+        if (ground == null || !noNearbyPlayer(level, ground, 9.0D) || level.getBlockEntity(ground) != null) return false;
+        BlockState soil = level.getBlockState(ground);
+        if (!(soil.is(Blocks.MYCELIUM) || soil.is(Blocks.GRASS_BLOCK) || soil.is(Blocks.DIRT) || soil.is(Blocks.PODZOL))) return false;
+        BlockPos pos = ground.above();
+        BlockState mushroom = HashNoise.bounded(HashNoise.combine(seed, cursor, 0x9911L), 2) == 0
+                ? Blocks.RED_MUSHROOM.defaultBlockState() : Blocks.BROWN_MUSHROOM.defaultBlockState();
+        return level.getBlockState(pos).isAir() && mushroom.canSurvive(level, pos) && level.setBlock(pos, mushroom, 3);
+    }
+
+    private static boolean noNearbyPlayer(ServerLevel level, BlockPos pos, double radius) {
+        return level.getNearestPlayer(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, radius, false) == null;
+    }
+
     private static boolean tryPlaceCobweb(ServerLevel level, BlockPos pos) {
         if (!level.getBlockState(pos).isAir()) return false;
         if (level.canSeeSky(pos)) return false;
-        if (level.getNearestPlayer(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, 7.0D, false) != null)
-            return false;
+        if (!noNearbyPlayer(level, pos, 7.0D)) return false;
 
         boolean naturalSupport = false;
         for (Direction direction : Direction.values()) {
@@ -520,6 +604,11 @@ public final class TerritoryManager {
                 || state.is(Blocks.OAK_LOG) || state.is(Blocks.SPRUCE_LOG) || state.is(Blocks.BIRCH_LOG)
                 || state.is(Blocks.JUNGLE_LOG) || state.is(Blocks.ACACIA_LOG) || state.is(Blocks.DARK_OAK_LOG)
                 || state.is(Blocks.MANGROVE_LOG) || state.is(Blocks.CHERRY_LOG);
+    }
+
+    private static boolean isPlayerBound(Mob mob) {
+        if (mob instanceof TamableAnimal tame && tame.isTame()) return true;
+        return mob instanceof AbstractHorse horse && horse.isTamed();
     }
 
     public static void setSimulationScale(ServerLevel level, double scale) {

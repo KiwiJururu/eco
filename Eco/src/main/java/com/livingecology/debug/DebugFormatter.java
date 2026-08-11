@@ -27,6 +27,7 @@ public final class DebugFormatter {
         TerritoryRecord territory = TerritoryManager.ensureTerritory(mob, level);
         TerritoryContext context = TerritoryManager.contextForMob(mob, level);
         SpeciesType species = maybeSpecies.get();
+        SpeciesProfile profile = SpeciesProfile.of(species);
         EnvironmentSnapshot env = EnvironmentManager.snapshot(level, mob.blockPosition(), species);
 
         line(player, ChatFormatting.GOLD, "===== Living Ecology: " + species.displayName() + " =====");
@@ -36,6 +37,15 @@ public final class DebugFormatter {
                 "Personalidade: " + MobMindData.personality(mob).displayName()
                         + " | Único: " + MobMindData.uniqueTrait(mob).displayName()
                         + " | Chefe: " + yesNo(MobMindData.isBoss(mob)));
+        line(player, ChatFormatting.DARK_AQUA,
+                "Perfil: família=" + profile.behaviorFamily().name()
+                        + " | movimento=" + profile.movementDomain().name()
+                        + " | habitat=" + profile.habitatClass().name()
+                        + " | hábito=" + profile.activityPattern().name());
+        line(player, ChatFormatting.DARK_AQUA,
+                "Território=" + profile.territoryStyle().name()
+                        + " | pegada=" + profile.footprintType().name()
+                        + " | reprodução=" + profile.reproductionMode().name());
 
         line(player, ChatFormatting.YELLOW, "Atributos (0-100)");
         line(player, ChatFormatting.GRAY,
@@ -61,10 +71,19 @@ public final class DebugFormatter {
                         + " | Dor " + roman(s(mob, StateType.PAIN))
                         + " | Repouso: " + yesNo(MobMindData.isResting(mob)));
 
+        String targetName = mob.getTarget() == null ? "nenhum" : mob.getTarget().getName().getString();
+        line(player, ChatFormatting.LIGHT_PURPLE,
+                "IA: alvo=" + targetName
+                        + " | navegação=" + (mob.getNavigation().isDone() ? "parada" : "ativa")
+                        + " | travamento=" + MobMindData.stuckWindows(mob) + "/2");
         line(player, ChatFormatting.LIGHT_PURPLE,
                 "Memória: ameaça=" + MobMindData.threatScore(mob)
                         + " | vitórias=" + MobMindData.victories(mob)
                         + " | idade=" + MobMindData.ageTicks(mob, level) + " ticks");
+        if (profile.reproductionMode() != ReproductionMode.NONE) {
+            line(player, ChatFormatting.LIGHT_PURPLE,
+                    "Reprodução ecológica: próxima janela em ~" + Math.max(0L, MobMindData.nextReproduction(mob) - level.getGameTime()) + " ticks");
+        }
         MobMindData.lastThreatPos(mob).ifPresent(pos ->
                 line(player, ChatFormatting.DARK_PURPLE, "Última posição de ameaça: " + shortPos(pos)));
 
@@ -102,8 +121,9 @@ public final class DebugFormatter {
                         + " | cobertura " + env.coverage()
                         + " | estabilidade " + env.stability()
                         + " | habitabilidade " + env.habitability());
+        double scale = TerritoryManager.simulationScale(level);
         line(player, ChatFormatting.DARK_GRAY,
-                "Escala ecológica: x" + one(TerritoryManager.simulationScale(level)) + " (blocos continuam limitados por orçamento/tick)");
+                "Escala ecológica: x" + one(scale) + " | proteção de despawn em teste: " + yesNo(scale > 1.0D));
     }
 
     public static void sendLocation(ServerPlayer player, ServerLevel level, BlockPos pos) {
@@ -126,12 +146,11 @@ public final class DebugFormatter {
                             + " | contestado " + yesNo(context.contested())
                             + " | terra de ninguém " + yesNo(context.noMansLand()));
         }
-        for (SpeciesType species : SpeciesType.values()) {
-            EnvironmentSnapshot env = EnvironmentManager.snapshot(level, pos, species);
-            line(player, ChatFormatting.DARK_AQUA,
-                    species.displayName() + " habitabilidade=" + env.habitability()
-                            + " (R" + env.resources() + " C" + env.coverage() + " E" + env.stability() + ")");
-        }
+        SpeciesType sample = context.strongest() == null ? SpeciesType.COW : context.strongest().species();
+        EnvironmentSnapshot env = EnvironmentManager.snapshot(level, pos, sample);
+        line(player, ChatFormatting.DARK_AQUA,
+                "Ambiente local (referência " + sample.displayName() + "): habitabilidade=" + env.habitability()
+                        + " | recursos=" + env.resources() + " | cobertura=" + env.coverage() + " | estabilidade=" + env.stability());
     }
 
     private static int a(Mob mob, AttributeType type) { return MobMindData.getAttribute(mob, type); }

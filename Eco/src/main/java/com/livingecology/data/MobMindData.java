@@ -43,6 +43,13 @@ public final class MobMindData {
     private static final String VICTORIES = "victories";
     private static final String BIRTH_TIME = "birthGameTime";
     private static final String NEXT_TERRITORY_CHECK = "nextTerritoryCheck";
+    private static final String NEXT_PATROL = "nextPatrol";
+    private static final String LAST_MOVE_CHECK = "lastMoveCheck";
+    private static final String LAST_MOVE_X = "lastMoveX";
+    private static final String LAST_MOVE_Y = "lastMoveY";
+    private static final String LAST_MOVE_Z = "lastMoveZ";
+    private static final String STUCK_WINDOWS = "stuckWindows";
+    private static final String NEXT_REPRODUCTION = "nextReproduction";
 
     public static boolean supports(Entity entity) {
         return SpeciesType.from(entity).isPresent();
@@ -103,6 +110,13 @@ public final class MobMindData {
         tag.putLong(LAST_TRUST_DECAY, level.getGameTime());
         tag.putLong(TERRITORY_ID, 0L);
         tag.putLong(NEXT_TERRITORY_CHECK, 0L);
+        tag.putLong(NEXT_PATROL, level.getGameTime() + 60L + random.nextInt(100));
+        tag.putLong(LAST_MOVE_CHECK, level.getGameTime());
+        tag.putDouble(LAST_MOVE_X, mob.getX());
+        tag.putDouble(LAST_MOVE_Y, mob.getY());
+        tag.putDouble(LAST_MOVE_Z, mob.getZ());
+        tag.putInt(STUCK_WINDOWS, 0);
+        tag.putLong(NEXT_REPRODUCTION, level.getGameTime() + 1200L + random.nextInt(2400));
         tag.putBoolean(INITIALIZED, true);
 
         if (boss) applyBossPhysical(mob, tag);
@@ -116,6 +130,38 @@ public final class MobMindData {
 
     private static void applyUniqueTrait(CompoundTag tag, UniqueTrait trait) {
         switch (trait) {
+            case SURVIVOR -> {
+                addAttribute(tag, AttributeType.MEMORY, 25);
+                addAttribute(tag, AttributeType.INSTINCT, 15);
+            }
+            case VIGILANT -> {
+                addAttribute(tag, AttributeType.ALERT, 30);
+                addAttribute(tag, AttributeType.PERCEPTION, 15);
+            }
+            case NOMAD -> {
+                addAttribute(tag, AttributeType.TERRITORY, -40);
+                addAttribute(tag, AttributeType.MEMORY, 15);
+            }
+            case GUARDIAN -> {
+                addAttribute(tag, AttributeType.TERRITORY, 30);
+                addAttribute(tag, AttributeType.CONSTITUTION, 15);
+            }
+            case ASTUTE -> {
+                addAttribute(tag, AttributeType.MEMORY, 20);
+                addAttribute(tag, AttributeType.INSTINCT, 15);
+            }
+            case SHY -> {
+                addAttribute(tag, AttributeType.ALERT, 20);
+                addAttribute(tag, AttributeType.INSTINCT, 15);
+            }
+            case FRIENDLY -> {
+                addAttribute(tag, AttributeType.SOCIABILITY, 25);
+                addAttribute(tag, AttributeType.TERRITORY, -10);
+            }
+            case VETERAN -> {
+                addAttribute(tag, AttributeType.MEMORY, 20);
+                addAttribute(tag, AttributeType.INSTINCT, 15);
+            }
             case MATRIARCH -> {
                 addAttribute(tag, AttributeType.SOCIABILITY, 10);
                 addAttribute(tag, AttributeType.MEMORY, 10);
@@ -135,6 +181,16 @@ public final class MobMindData {
                 addAttribute(tag, AttributeType.SOCIABILITY, 15);
                 addAttribute(tag, AttributeType.MEMORY, 10);
                 addAttribute(tag, AttributeType.TERRITORY, 5);
+            }
+            case SENTINEL -> {
+                addAttribute(tag, AttributeType.ALERT, 20);
+                addAttribute(tag, AttributeType.PERCEPTION, 10);
+                addAttribute(tag, AttributeType.TERRITORY, 10);
+            }
+            case COMMUNITY_ELDER -> {
+                addAttribute(tag, AttributeType.MEMORY, 20);
+                addAttribute(tag, AttributeType.SOCIABILITY, 15);
+                addAttribute(tag, AttributeType.ALERT, 5);
             }
             case ROBUST -> addAttribute(tag, AttributeType.CONSTITUTION, 20);
             case NONE -> { }
@@ -244,8 +300,32 @@ public final class MobMindData {
         if (!tag.hasUUID(LAST_THREAT_UUID)) return Optional.empty();
         UUID id = tag.getUUID(LAST_THREAT_UUID);
         Entity entity = level.getEntity(id);
-        if (entity instanceof LivingEntity living && living.isAlive()) return Optional.of(living);
+        if (entity instanceof LivingEntity living && BehaviorUtil.isValidCombatTarget(living)) return Optional.of(living);
         return Optional.empty();
+    }
+
+    /** Removes active threat memory when it points at a Creative/Spectator player. */
+    public static void clearInvalidPlayerThreat(Mob mob, ServerLevel level) {
+        CompoundTag tag = get(mob);
+        if (!tag.hasUUID(LAST_THREAT_UUID)) return;
+        Entity entity = level.getEntity(tag.getUUID(LAST_THREAT_UUID));
+        if (entity instanceof net.minecraft.world.entity.player.Player player
+                && (player.isCreative() || player.isSpectator())) {
+            clearThreat(mob);
+        }
+    }
+
+    public static void clearThreatIfMatches(Mob mob, UUID id) {
+        CompoundTag tag = get(mob);
+        if (tag.hasUUID(LAST_THREAT_UUID) && tag.getUUID(LAST_THREAT_UUID).equals(id)) clearThreat(mob);
+    }
+
+    public static void clearThreat(Mob mob) {
+        CompoundTag tag = get(mob);
+        tag.remove(LAST_THREAT_UUID);
+        tag.remove(LAST_THREAT_POS);
+        tag.putInt(THREAT_SCORE, 0);
+        tag.putLong(LAST_THREAT_TIME, 0L);
     }
 
     public static Optional<BlockPos> lastThreatPos(Mob mob) {
@@ -280,6 +360,58 @@ public final class MobMindData {
 
     public static long nextTerritoryCheck(Mob mob) { return get(mob).getLong(NEXT_TERRITORY_CHECK); }
     public static void setNextTerritoryCheck(Mob mob, long tick) { get(mob).putLong(NEXT_TERRITORY_CHECK, tick); }
+
+    public static boolean patrolDue(Mob mob, ServerLevel level) {
+        return level.getGameTime() >= get(mob).getLong(NEXT_PATROL);
+    }
+
+    public static void scheduleNextPatrol(Mob mob, ServerLevel level, int minTicks, int maxTicks) {
+        int min = Math.max(1, minTicks);
+        int max = Math.max(min, maxTicks);
+        int extra = max == min ? 0 : mob.getRandom().nextInt(max - min + 1);
+        get(mob).putLong(NEXT_PATROL, level.getGameTime() + min + extra);
+    }
+
+    /**
+     * Small navigation watchdog. It samples displacement instead of iterating missed ticks, so it remains safe
+     * when the server tick rate is changed. Two consecutive low-motion windows count as a stall.
+     */
+    public static boolean movementStalled(Mob mob, ServerLevel level, int sampleTicks, double minMovement) {
+        CompoundTag tag = get(mob);
+        long now = level.getGameTime();
+        long last = tag.getLong(LAST_MOVE_CHECK);
+        if (now - last < Math.max(5, sampleTicks)) return tag.getInt(STUCK_WINDOWS) >= 2;
+
+        double dx = mob.getX() - tag.getDouble(LAST_MOVE_X);
+        double dy = mob.getY() - tag.getDouble(LAST_MOVE_Y);
+        double dz = mob.getZ() - tag.getDouble(LAST_MOVE_Z);
+        double movedSqr = dx * dx + dy * dy + dz * dz;
+        int windows = movedSqr < minMovement * minMovement && !mob.getNavigation().isDone()
+                ? Math.min(5, tag.getInt(STUCK_WINDOWS) + 1) : 0;
+
+        tag.putLong(LAST_MOVE_CHECK, now);
+        tag.putDouble(LAST_MOVE_X, mob.getX());
+        tag.putDouble(LAST_MOVE_Y, mob.getY());
+        tag.putDouble(LAST_MOVE_Z, mob.getZ());
+        tag.putInt(STUCK_WINDOWS, windows);
+        return windows >= 2;
+    }
+
+    public static int stuckWindows(Mob mob) { return get(mob).getInt(STUCK_WINDOWS); }
+
+    public static boolean reproductionDue(Mob mob, ServerLevel level) {
+        return level.getGameTime() >= get(mob).getLong(NEXT_REPRODUCTION);
+    }
+
+    public static void scheduleNextReproduction(Mob mob, ServerLevel level, long baseTicks, double ecologicalScale) {
+        double scale = Math.max(0.01D, Math.min(100.0D, ecologicalScale));
+        long delay = Math.max(200L, (long) Math.ceil(Math.max(200L, baseTicks) / scale));
+        long jitter = Math.max(1L, delay / 4L);
+        delay += mob.getRandom().nextInt((int) Math.min(Integer.MAX_VALUE, jitter + 1L));
+        get(mob).putLong(NEXT_REPRODUCTION, level.getGameTime() + delay);
+    }
+
+    public static long nextReproduction(Mob mob) { return get(mob).getLong(NEXT_REPRODUCTION); }
 
     public static int victories(Mob mob) { return get(mob).getInt(VICTORIES); }
 

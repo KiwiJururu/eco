@@ -1,4 +1,4 @@
-# Living Ecology 0.0.1 — somente `src`
+# Living Ecology 0.0.2 — somente `src`
 
 Copie esta pasta `src` para a raiz de um MDK Forge 1.20.1.
 
@@ -42,3 +42,12 @@ Nenhuma biblioteca de terceiros é exigida pelo código do protótipo além de M
 Esta entrega contém somente `src`, como solicitado. Se o seu MDK ainda estiver com o identificador do mod de exemplo em `gradle.properties`/`build.gradle`, mantenha o workspace e altere apenas esse identificador para `livingecology` para que ele corresponda ao `@Mod` e ao `mods.toml` desta pasta.
 
 Para o primeiro teste, substitua a pasta `src` de exemplo do MDK por esta e rode o cliente pelo Gradle do próprio MDK.
+
+
+## 0.0.2 - correções da primeira bateria de testes
+- Creative/Spectator nunca são alvos válidos e memórias antigas desses jogadores são limpas.
+- Zombie/Wolf/Spider priorizam relações ecológicas relevantes antes de aceitar o alvo vanilla.
+- Lobos selvagens patrulham explicitamente o território e repousam apenas em janelas noturnas curtas.
+- Zombies possuem watchdog de navegação e dispersão de aproximação para reduzir hordas paralisadas.
+- `timescale > 1` nega despawn natural dos quatro mobs perto de observadores, apenas durante o fast-forward de laboratório.
+- O analisador mostra alvo atual, estado da navegação e contador de travamento.
