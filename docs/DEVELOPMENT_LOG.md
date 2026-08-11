@@ -114,3 +114,29 @@ Validated gameplay commit: `5a1dff521b2dbff993a62e3ec2e273005519008e`
 - build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
 - no new textures/assets required; human flight naturalness, colony density and pacing QA remains PENDING
 - next planned gameplay batch: issue #9, common passive land species
+
+## Common passive land ecology 0.2.3
+
+Validated gameplay commit: `72cde05eb315dbffe93f6e996b2f8dbeeae34d32`
+
+- completed issue #9 scope for Sheep, Pig, Chicken, Rabbit, Horse, Donkey, Mule, Camel, Goat,
+  Llama, Trader Llama and Sniffer
+- added an explicit per-species vanilla ownership policy and `docs/PASSIVE_LAND_AI_AUDIT.md`
+- limited herd cohesion, perceived-threat escape and home return to idle vanilla navigation with
+  land-domain, loaded-chunk and bounded twelve-member checks
+- preserved Sheep grazing/shearing, Pig saddle/boost/riding, Chicken jockey/egg/flap, Rabbit custom
+  hopping/garden/Killer Bunny, horse-family tame/owner/chest/riding, Llama caravan/spit, Camel and
+  Goat Brain states, Trader Llama lifecycle and Sniffer search/dig behavior
+- corrected vanilla Camel classification: `Camel.isTamed()` always returns true but does not express
+  player ownership, so wild Camel territory and ecological reproduction now work without taking
+  movement ownership from `CamelAi`
+- made Trader Llama explicitly non-territorial and non-reproductive
+- excluded ridden animals from automatic ecological reproduction while retaining mount control
+- stabilized repeated GameTest runs by capping Bee colony association at the same 48-block bound as
+  hive recentering; stale distant SavedData can no longer capture a new colony
+- compileJava PASS on Java 17
+- JUnit PASS (31/31)
+- Forge GameTests PASS (30/30)
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human land-herd naturalness, pacing and footprint QA remains PENDING
+- next planned gameplay batch: issue #10, terrestrial predators

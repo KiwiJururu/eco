@@ -55,6 +55,8 @@ public final class AdaptiveAiManager {
                     case COD, SALMON, TROPICAL_FISH, PUFFERFISH, SQUID, GLOW_SQUID, DOLPHIN,
                             AXOLOTL, TURTLE, TADPOLE, FROG -> AquaticBehavior.tick(mob, level);
                     case BAT, PARROT, ALLAY, BEE -> FlyingColonyBehavior.tick(mob, level);
+                    case SHEEP, PIG, CHICKEN, RABBIT, HORSE, DONKEY, MULE, CAMEL, GOAT,
+                            LLAMA, TRADER_LLAMA, SNIFFER -> PassiveLandBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }

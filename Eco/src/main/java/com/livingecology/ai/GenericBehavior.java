@@ -14,6 +14,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.animal.camel.Camel;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ public final class GenericBehavior {
 
     public static void tick(Mob mob, ServerLevel level, SpeciesProfile profile) {
         if ((mob instanceof TamableAnimal tame && tame.isTame())
-                || (mob instanceof AbstractHorse horse && horse.isTamed())) {
+                || (mob instanceof AbstractHorse horse && !(horse instanceof Camel) && horse.isTamed())) {
             // Player-owned animals retain vanilla owner-follow/command/ride semantics. The adaptive
             // layer still supplies memory/states/debug data, but never steals their navigation.
             MobMindData.setTerritoryId(mob, 0L);
