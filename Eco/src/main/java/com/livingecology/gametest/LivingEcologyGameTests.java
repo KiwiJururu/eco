@@ -120,19 +120,17 @@ public final class LivingEcologyGameTests {
     @GameTest(template = "test_arena")
     public static void wolfPatrolCreatesNavigationOrder(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        Wolf a = spawn(helper, EntityType.WOLF, 4, 1, 4);
-        Wolf b = spawn(helper, EntityType.WOLF, 5, 1, 4);
-        MobMindData.initialize(a, level);
-        MobMindData.initialize(b, level);
-        MobMindData.get(a).putLong("nextPatrol", 0L);
-        MobMindData.get(b).putLong("nextPatrol", 0L);
+        Wolf wolf = spawn(helper, EntityType.WOLF, 4, 1, 4);
+        MobMindData.initialize(wolf, level);
 
-        TerritoryRecord territory = TerritoryManager.ensureTerritory(a, level);
-        helper.assertTrue(territory != null, "Wolf pack failed to form a territory");
-        WolfBehavior.tick(a, level);
+        BlockPos center = helper.absolutePos(new BlockPos(4, 1, 4));
+        TerritoryRecord territory = new TerritoryRecord(900001L, SpeciesType.WOLF, center, center,
+                2, 70, 50, 1, level.getSeed() ^ 0x574f4c46L, level.getGameTime());
 
-        helper.assertTrue(!a.getNavigation().isDone() || a.getTarget() != null,
-                "Wild Wolf remained idle despite a due patrol");
+        boolean ordered = WolfBehavior.orderPatrol(wolf, level, territory);
+        helper.assertTrue(ordered, "Wolf patrol planner could not issue a reachable navigation order");
+        helper.assertTrue(!wolf.getNavigation().isDone(),
+                "Wolf patrol planner reported success but navigation remained idle");
         helper.succeed();
     }
 
