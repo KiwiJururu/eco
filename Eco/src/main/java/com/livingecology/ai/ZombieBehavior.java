@@ -2,6 +2,7 @@ package com.livingecology.ai;
 
 import com.livingecology.data.AttributeType;
 import com.livingecology.data.MobMindData;
+import com.livingecology.data.SpeciesProfile;
 import com.livingecology.data.SpeciesType;
 import com.livingecology.territory.TerritoryContext;
 import com.livingecology.territory.TerritoryManager;
@@ -17,11 +18,14 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Optional;
 
+/** Dedicated ecological controller shared by vanilla Zombie subclasses. */
 public final class ZombieBehavior {
     private ZombieBehavior() {}
 
     public static void tick(Mob raw, ServerLevel level) {
         if (!(raw instanceof Zombie zombie)) return;
+        SpeciesType species = SpeciesType.from(zombie).orElse(SpeciesType.ZOMBIE);
+        SpeciesProfile profile = SpeciesProfile.of(species);
         TerritoryRecord territory = TerritoryManager.ensureTerritory(zombie, level);
         TerritoryContext context = TerritoryManager.contextForMob(zombie, level);
         int perception = MobMindData.getAttribute(zombie, AttributeType.PERCEPTION);
@@ -32,13 +36,15 @@ public final class ZombieBehavior {
         LivingEntity vanillaTarget = zombie.getTarget();
         if (!BehaviorUtil.isValidCombatTarget(vanillaTarget)) vanillaTarget = null;
 
-        List<Mob> horde = BehaviorUtil.nearbySameSpecies(zombie, level,
+        // Zombie variants are one social/ecological family. A Husk, Drowned and Zombie Villager may
+        // exchange target knowledge with normal Zombies instead of forming isolated micro-hordes.
+        List<Mob> horde = nearbyZombieFamily(zombie, level,
                 10.0D + social * 0.10D + (MobMindData.isBoss(zombie) ? 10.0D : 0.0D));
 
         LivingEntity target = null;
 
-        // 1) Wolf <-> Zombie war has ecological priority. In 0.0.1 the existing vanilla Player target was
-        // evaluated first, preventing the war from being visible whenever a player stood nearby.
+        // 1) Wolf <-> Zombie-family war has ecological priority over a vanilla player fixation when
+        // the horde has enough confidence or local history to engage.
         Optional<Mob> wolf = BehaviorUtil.nearestSpecies(zombie, level, SpeciesType.WOLF, range);
         if (wolf.isPresent()) {
             Mob candidate = wolf.get();
@@ -49,7 +55,7 @@ public final class ZombieBehavior {
             }
         }
 
-        // 2) Spider <-> Zombie symbiosis: respond to an ally's real attacker.
+        // 2) Spider <-> Zombie-family symbiosis: respond to an ally's real attacker.
         if (target == null) {
             for (Mob spider : level.getEntitiesOfClass(Mob.class, zombie.getBoundingBox().inflate(range), m -> {
                 SpeciesType type = SpeciesType.from(m).orElse(null);
@@ -70,7 +76,7 @@ public final class ZombieBehavior {
             }
         }
 
-        // 3) Horde knowledge. Only propagate targets that are still legal.
+        // 3) Horde knowledge. Mixed zombie variants share legal targets and remembered threats.
         if (target == null) {
             for (Mob ally : horde) {
                 LivingEntity shared = ally.getTarget();
@@ -97,10 +103,10 @@ public final class ZombieBehavior {
             int sent = 0;
             for (Mob ally : horde) {
                 if (sent++ >= relay) break;
+                MobMindData.initialize(ally, level);
                 MobMindData.rememberThreat(ally, target, MobMindData.isBoss(zombie) ? 15 : 7, level);
                 LivingEntity allyTarget = ally.getTarget();
-                if ((!BehaviorUtil.isValidCombatTarget(allyTarget) || allyTarget == null)
-                        && ally.hasLineOfSight(target)) {
+                if (!BehaviorUtil.isValidCombatTarget(allyTarget) && ally.hasLineOfSight(target)) {
                     ally.setTarget(target);
                 }
             }
@@ -135,9 +141,10 @@ public final class ZombieBehavior {
         }
 
         // Horde drift keeps an idle group alive and mobile even when vanilla random-stroll timing lines up poorly.
+        // Use the species movement domain so Drowned patrol can remain amphibious instead of demanding dry land.
         if (horde.size() >= 2 && zombie.getNavigation().isDone() && MobMindData.patrolDue(zombie, level)) {
             Vec3 center = territory == null ? zombie.position() : Vec3.atCenterOf(territory.core());
-            Optional<Vec3> drift = BehaviorUtil.safePatrolPoint(zombie, level, center, 12.0D);
+            Optional<Vec3> drift = BehaviorUtil.safePatrolPoint(zombie, level, profile, center, 12.0D);
             if (drift.isPresent()) {
                 Vec3 p = drift.get();
                 zombie.getNavigation().moveTo(p.x, p.y, p.z, 0.85D);
@@ -146,6 +153,19 @@ public final class ZombieBehavior {
                 MobMindData.scheduleNextPatrol(zombie, level, 40, 90);
             }
         }
+    }
+
+    private static List<Mob> nearbyZombieFamily(Zombie zombie, ServerLevel level, double radius) {
+        return level.getEntitiesOfClass(Mob.class, zombie.getBoundingBox().inflate(radius), other -> {
+            if (other == zombie || !other.isAlive()) return false;
+            SpeciesType type = SpeciesType.from(other).orElse(null);
+            return isZombieFamily(type);
+        });
+    }
+
+    private static boolean isZombieFamily(SpeciesType type) {
+        return type == SpeciesType.ZOMBIE || type == SpeciesType.ZOMBIE_VILLAGER
+                || type == SpeciesType.HUSK || type == SpeciesType.DROWNED || type == SpeciesType.GIANT;
     }
 
     private static boolean avoidKnownCobwebIfUseful(Zombie zombie, ServerLevel level, int adaptation) {
