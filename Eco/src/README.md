@@ -1,53 +1,15 @@
-# Living Ecology 0.0.2 — somente `src`
+# Living Ecology source tree
 
-Copie esta pasta `src` para a raiz de um MDK Forge 1.20.1.
+This `src` directory is part of the full Forge MDK project stored in this repository. It is no longer distributed or maintained as a standalone `src`-only prototype.
 
-## Protótipo implementado
+Do not use old version notes in this directory as project state.
 
-- Cow: rebanho, pânico local, memória de ameaça, proteção ambiental, repouso, home range.
-- Wolf: matilha, retirada quando ferido, compartilhamento de alvos, flanqueamento simples, defesa territorial, guerra com Zombies, fronteira regulada com Spiders.
-- Spider: ninho, defesa por zonas, teias graduais, uso territorial, simbiose local com Zombies, fronteira regulada com Wolves.
-- Zombie: horda, propagação de alvo, memória de última posição, ajuda a Spiders, guerra com Wolves, consolidação territorial e chefe de horda.
-- Atributos 0-100, personalidade, estados 0-V, Adaptação situacional, Únicos/Chefes.
-- Territórios persistentes comprimidos (`SavedData`), relações adquiridas, terra de ninguém, conquista simples.
-- Situação Ambiental esparsa e recuperação por tempo lógico.
-- Simulação ecológica acelerável via `/livingecology timescale <0.01..100>`.
-- Pegada de teias com orçamento físico fixo; aumentar a timescale não aumenta explosivamente alterações de blocos.
+Canonical development information lives at repository root:
+- `../../AGENTS.md`
+- `../../docs/PROJECT_STATE.yaml`
+- `../../docs/DESIGN_DECISIONS.md`
+- `../../docs/ROADMAP.md`
+- `../../docs/QA_POLICY.md`
+- `../../docs/SPECIES_STATUS.csv`
 
-## Debug
-
-Obtenha o item:
-
-`/give @s livingecology:debug_analyzer`
-
-- Clique direito em Cow/Wolf/Spider/Zombie: mostra atributos, estados, adaptação, memória, território, relações e ambiente.
-- Clique direito em um bloco ou no ar: inspeciona a ecologia local.
-
-Comandos:
-
-- `/livingecology timescale` — consulta escala ecológica.
-- `/livingecology timescale 10` — acelera apenas a simulação abstrata.
-- `/livingecology debug` — relatório ecológico da posição atual.
-
-## Filosofia de tempo
-
-A lógica usa `ServerLevel#getGameTime()` e diferenças de ticks. Não há `System.currentTimeMillis()`, `sleep`, nem loops de catch-up por tick perdido. A simulação offline resolve o tempo decorrido matematicamente. O orçamento de materialização de blocos permanece por tick real do servidor.
-
-## Dependências
-
-Nenhuma biblioteca de terceiros é exigida pelo código do protótipo além de Minecraft/Forge do MDK.
-
-## Nota sobre o MDK
-
-Esta entrega contém somente `src`, como solicitado. Se o seu MDK ainda estiver com o identificador do mod de exemplo em `gradle.properties`/`build.gradle`, mantenha o workspace e altere apenas esse identificador para `livingecology` para que ele corresponda ao `@Mod` e ao `mods.toml` desta pasta.
-
-Para o primeiro teste, substitua a pasta `src` de exemplo do MDK por esta e rode o cliente pelo Gradle do próprio MDK.
-
-
-## 0.0.2 - correções da primeira bateria de testes
-- Creative/Spectator nunca são alvos válidos e memórias antigas desses jogadores são limpas.
-- Zombie/Wolf/Spider priorizam relações ecológicas relevantes antes de aceitar o alvo vanilla.
-- Lobos selvagens patrulham explicitamente o território e repousam apenas em janelas noturnas curtas.
-- Zombies possuem watchdog de navegação e dispersão de aproximação para reduzir hordas paralisadas.
-- `timescale > 1` nega despawn natural dos quatro mobs perto de observadores, apenas durante o fast-forward de laboratório.
-- O analisador mostra alvo atual, estado da navegação e contador de travamento.
+The current active batch is recorded in `docs/PROJECT_STATE.yaml` and its GitHub issue.
