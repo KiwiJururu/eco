@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: dbd85b9a85240f164b796f394a651929b0c782c0
-  version: 0.2.6-development
+  gameplay_source_commit: 7f55e95f218e6c666b385e7da8eabacdea3f9bea
+  version: 0.2.7-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 49
+  forge_gametest_count: 56
   build: PASS
   jar_artifact: PASS
 
@@ -87,6 +87,15 @@ validated_features:
   - LAND/AIR/LAVA environmental domain validation
   - Hoglin repellent pacification honored by ecological reproduction
   - Hoglin and Strider vanilla-love/capacity integration
+  - End/cave special per-species vanilla AI ownership policies
+  - Enderman stare, anger, teleport and carried-block preservation
+  - vanilla Enderman target priority for Endermite retained
+  - Endermite lifetime/despawn kept transient and non-territorial
+  - Silverfish infested-block nest territory with bounded local threat memory
+  - Silverfish memory sharing without forced target propagation
+  - Shulker attachment, peek, teleport, bullet and duplication ownership retained
+  - STATIC movement domain prevents ecological Shulker navigation
+  - End and cave habitat response validation
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -96,8 +105,8 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 13
-  active_batch: end_cave_special
+  active_issue: 14
+  active_batch: villages_golems
   instruction: complete_issue_before_advancing
 
 completed_issues:
@@ -107,9 +116,9 @@ completed_issues:
   terrestrial_predators: 10
   skeleton_undead_combat: 11
   common_hostile_nether: 12
+  end_cave_special: 13
 
 backlog_issues:
-  end_cave_special: 13
   villages_golems: 14
   piglin_society: 15
   illager_society: 16
