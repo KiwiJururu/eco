@@ -46,15 +46,22 @@ Validated commit: `d1903a31d608991d0453ed45571cfb6950964e6c`
 - Mooshroom territory identity GameTest added
 - regression PASS (11/11 GameTests)
 
-## Infrastructure 0.2.0
+## Autonomous infrastructure 0.2.0
 
-In progress.
+Implemented as the control plane for all later development:
 
-Goals:
-- externalize project memory into repository
-- permanent `development/stable` baseline
-- remove duplicate CI executions
-- cancel obsolete CI runs when newer commits arrive
-- add scheduled full regression against stable development
-- issue-driven family batches
-- machine-readable 79-species QA matrix
+- repository is the canonical project memory; chat history is no longer required
+- permanent `development/stable` development baseline
+- `AGENTS.md` autonomous operating rules
+- machine-readable `PROJECT_STATE.yaml`
+- canonical `DESIGN_DECISIONS.md`
+- family roadmap, QA policy and 79-species status matrix
+- issue-driven backlog (#7 through #19)
+- duplicate development CI runs removed
+- obsolete CI runs automatically cancelled when superseded
+- nightly full regression of `development/stable`
+- nightly failure automatically opens/updates a GitHub issue and resolves it when green again
+- stale standalone-src README replaced by canonical documentation pointer
+- minimal new-chat resume prompt added
+
+After this milestone the active gameplay batch is issue #7: aquatic schools and amphibious ecology.
