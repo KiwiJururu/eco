@@ -46,7 +46,7 @@ public final class AdaptiveAiManager {
                     case COW -> CowBehavior.tick(mob, level);
                     case WOLF -> WolfBehavior.tick(mob, level);
                     case SPIDER, CAVE_SPIDER -> SpiderBehavior.tick(mob, level);
-                    case ZOMBIE -> ZombieBehavior.tick(mob, level);
+                    case ZOMBIE, ZOMBIE_VILLAGER, HUSK, DROWNED -> ZombieBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }
