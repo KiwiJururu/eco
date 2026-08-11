@@ -65,3 +65,27 @@ Implemented as the control plane for all later development:
 - minimal new-chat resume prompt added
 
 After this milestone the active gameplay batch is issue #7: aquatic schools and amphibious ecology.
+
+## Aquatic schools and amphibious ecology 0.2.1
+
+Validated gameplay commit: `11facda3771d425104610e888ac1e62e3d5dd1c6`
+
+- completed issue #7 scope for Cod, Salmon, Tropical Fish, Pufferfish, Squid, Glow Squid,
+  Dolphin, Axolotl, Turtle, Tadpole and Frog
+- added an explicit per-species vanilla ownership policy and `docs/AQUATIC_AI_AUDIT.md`
+- retained vanilla fish schooling; strong escape orders require perceived/remembered danger
+- extended local, line-of-sight social alarms to audited aquatic species with decaying confidence
+  and a maximum of 12 processed senders per pass
+- implemented idle Squid/Glow Squid cohesion with native movement vectors rather than path navigation
+- preserved Pufferfish inflation, Dolphin air/treasure/item goals, Axolotl play-dead, Turtle
+  home/egg travel and Frog/Tadpole Brain activities
+- enforced `WATER` versus `AMPHIBIOUS` target domains without loading missing chunks
+- validated Axolotl ecological home range and vanilla-love reproduction/capacity integration
+- corrected the Squid GameTest setup to wait for Minecraft's first fluid-state update; production
+  behavior was not weakened to accommodate the invalid same-tick setup
+- compileJava PASS on Java 17
+- JUnit PASS (19/19)
+- Forge GameTests PASS (17/17)
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human naturalness, density and pacing QA remains PENDING
+- next planned gameplay batch: issue #8, flying passive/colony species
