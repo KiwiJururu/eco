@@ -2,7 +2,7 @@ name: Living Ecology CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'development/**' ]
   pull_request:
   workflow_dispatch:
 
@@ -10,10 +10,10 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Compile and build
+  qa:
+    name: Compile, unit tests, GameTests and build
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: Eco
@@ -21,6 +21,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Apply development source overlay
+        run: |
+          if [ -f ../.qa/living_overlay.tgz ]; then
+            tar -xzf ../.qa/living_overlay.tgz -C .
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,11 +39,29 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
-      - name: Compile Java
+      - name: Compile main sources
         run: ./gradlew compileJava --stacktrace
+
+      - name: Run unit tests
+        run: ./gradlew test --stacktrace
+
+      - name: Run Forge GameTests
+        run: ./gradlew runGameTestServer --stacktrace
 
       - name: Build mod
         run: ./gradlew build --stacktrace
+
+      - name: Upload QA logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: living-ecology-qa-logs-${{ github.sha }}
+          path: |
+            Eco/build/reports/**
+            Eco/run/logs/**
+            Eco/run/crash-reports/**
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload built JAR
         if: success()
