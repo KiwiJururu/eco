@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="livingecology"
+version="0.0.1"
+displayName="Living Ecology"
+authors="Living Ecology Prototype"
+description='''
+Adaptive vanilla-mob ecology prototype for Minecraft 1.20.1.
+Prototype species: Cow, Wolf, Spider and Zombie.
+'''
+
+[[dependencies.livingecology]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.livingecology]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="BOTH"
