@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: 72cde05eb315dbffe93f6e996b2f8dbeeae34d32
-  version: 0.2.3-development
+  gameplay_source_commit: 13d45b9b4f8f846cf0c9ee7964d72037c4c5436b
+  version: 0.2.4-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 30
+  forge_gametest_count: 36
   build: PASS
   jar_artifact: PASS
 
@@ -64,6 +64,13 @@ validated_features:
   - Camel always-tamed vanilla classification corrected for ecology
   - Trader Llama lifecycle kept non-territorial
   - Bee colony association aligned with bounded hive recentering
+  - terrestrial predator/independent per-species vanilla AI ownership policies
+  - Fox and Ocelot trust plus native prey/defense state preservation
+  - tamed Cat owner/sit/bed/collar preservation with wild-only ecology
+  - Polar Bear neutral anger and cub-protection preservation
+  - Panda gene and atomic sit/eat/sneeze/roll state preservation
+  - bounded safe retreat fallback for confined loaded terrain
+  - bordered predator overlap with acquired rivalry but no forced targets
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -73,17 +80,17 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 10
-  active_batch: terrestrial_predators
+  active_issue: 11
+  active_batch: skeleton_undead_combat
   instruction: complete_issue_before_advancing
 
 completed_issues:
   aquatic: 7
   flying_passive_colony: 8
   common_passive_land: 9
+  terrestrial_predators: 10
 
 backlog_issues:
-  terrestrial_predators: 10
   skeleton_undead_combat: 11
   common_hostile_nether: 12
   end_cave_special: 13
