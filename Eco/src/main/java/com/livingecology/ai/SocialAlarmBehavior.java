@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Local social warning for passive herd species.
+ * Local social warning for passive herds and explicitly audited social aquatic species.
  *
  * This is deliberately not a global group brain: the receiver must be close enough to perceive a
  * same-species groupmate, and the reported threat must still be within a plausible extended
@@ -25,7 +25,10 @@ public final class SocialAlarmBehavior {
     private SocialAlarmBehavior() {}
 
     public static void tick(Mob mob, ServerLevel level, SpeciesProfile profile) {
-        if (profile.behaviorFamily() != BehaviorFamily.PASSIVE_HERD) return;
+        boolean passiveHerd = profile.behaviorFamily() == BehaviorFamily.PASSIVE_HERD;
+        boolean auditedAquatic = AquaticSpeciesPolicy.of(profile.species())
+                .map(AquaticSpeciesPolicy::acceptsSocialAlarm).orElse(false);
+        if (!passiveHerd && !auditedAquatic) return;
         if (MobMindData.resolveThreat(mob, level).isPresent()) return;
 
         int social = MobMindData.getAttribute(mob, AttributeType.SOCIABILITY);
@@ -36,7 +39,9 @@ public final class SocialAlarmBehavior {
                 MobMindData.getAttribute(mob, AttributeType.PERCEPTION));
         List<Mob> herd = BehaviorUtil.nearbySameSpecies(mob, level, signalRange);
 
+        int inspected = 0;
         for (Mob ally : herd) {
+            if (inspected++ >= 12) break;
             if (!mob.hasLineOfSight(ally)) continue;
 
             LivingEntity threat = legalThreatFrom(ally, level);
