@@ -252,3 +252,35 @@ Validated gameplay commit: `7f55e95f218e6c666b385e7da8eabacdea3f9bea`
 - no new textures/assets required; human Enderman teleport/block handling, Silverfish emergence and
   Shulker peek/teleport pacing QA remains PENDING
 - next planned gameplay batch: issue #14, villages and golems
+
+## Villages, traders and golem guardians 0.2.8
+
+Validated gameplay commit: `b1faea5cb27ad69f683b8ed2ceb255343f14ad49`
+
+- completed issue #14 scope for Villager, Wandering Trader, Iron Golem, Snow Golem and Trader Llama
+- added an explicit per-species ownership/community policy and
+  `docs/VILLAGE_GUARDIAN_AI_AUDIT.md`
+- removed all five species from generic society/guardian/passive navigation and ecological target
+  selection so Brain schedules, trading, travel, despawn and defense goals remain authoritative
+- preserved Villager profession/level/XP, HOME Brain memory, active path, customer and offer state
+- corrected Wandering Trader from persistent `COMMUNITY` territory to transient non-territorial
+  ecology and retained Trader Llama's trader leash/despawn contract
+- retained persistent community territory for Villagers, Iron Golems and Snow Golems only
+- retained symmetric Villager/Iron Golem `SYMBIOTIC` relation with affinity 100
+- added local defense reports from a current vanilla target or recent direct attacker, limited to
+  eight receivers within 16 blocks and never assigning a target or navigation path
+- isolated village knowledge from trader-caravan knowledge and constrained reports by receiver
+  perception plus source visibility/proximity
+- preserved Iron Golem creator, persistent anger and flower state and Snow Golem pumpkin/ranged
+  target state; all five species retain zero ecological physical footprints
+- validated a player-placed iron block remains unchanged by the overlay
+- corrected three GameTest fixture assumptions exposed by repeated runs: existing persisted
+  Silverfish/village territories require every spawned member to execute the normal join pass, and
+  the Villager path must be created before the trading fixture is activated
+- compileJava PASS on Java 17
+- JUnit PASS (61/61)
+- Forge GameTests PASS (64/64), including a successful rerun over persisted test-world state
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human village schedule, crowd flow, defense timing and trader
+  caravan pacing QA remains PENDING
+- next planned gameplay batch: issue #15, Piglin society
