@@ -27,6 +27,13 @@ jobs:
           cat ../.qa/overlay.b64.* | tr -d '\n\r' | base64 -d > /tmp/living_overlay.tgz
           gzip -t /tmp/living_overlay.tgz
           tar -xzf /tmp/living_overlay.tgz -C .
+          shopt -s nullglob
+          for patch in ../.qa/patch*.b64; do
+            name="$(basename "$patch" .b64)"
+            tr -d '\n\r' < "$patch" | base64 -d > "/tmp/${name}.tgz"
+            gzip -t "/tmp/${name}.tgz"
+            tar -xzf "/tmp/${name}.tgz" -C .
+          done
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
