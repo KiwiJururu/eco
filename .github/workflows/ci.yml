@@ -2,9 +2,16 @@ name: Living Ecology CI
 
 on:
   push:
-    branches: [ main, 'development/**' ]
+    branches: [ main, development/stable ]
   pull_request:
+    branches: [ main, development/stable ]
   workflow_dispatch:
+
+# A newer commit on the same branch/PR makes the older run obsolete. Cancelling it is
+# especially valuable once the GameTest suite grows to dozens of species scenarios.
+concurrency:
+  group: living-ecology-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
