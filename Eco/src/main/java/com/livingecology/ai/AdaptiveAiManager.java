@@ -52,6 +52,8 @@ public final class AdaptiveAiManager {
                     case WOLF -> WolfBehavior.tick(mob, level);
                     case SPIDER, CAVE_SPIDER -> SpiderBehavior.tick(mob, level);
                     case ZOMBIE, ZOMBIE_VILLAGER, HUSK, DROWNED -> ZombieBehavior.tick(mob, level);
+                    case COD, SALMON, TROPICAL_FISH, PUFFERFISH, SQUID, GLOW_SQUID, DOLPHIN,
+                            AXOLOTL, TURTLE, TADPOLE, FROG -> AquaticBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }

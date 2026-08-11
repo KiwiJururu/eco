@@ -263,7 +263,8 @@ public final class BehaviorUtil {
         return true;
     }
 
-    private static boolean isValidForDomain(ServerLevel level, BlockPos pos, MovementDomain domain) {
+    /** Public domain gate for specialized controllers and objective movement tests. */
+    public static boolean isValidForDomain(ServerLevel level, BlockPos pos, MovementDomain domain) {
         return switch (domain) {
             case LAND -> isSafeLand(level, pos);
             case WATER -> level.getFluidState(pos).is(FluidTags.WATER);
