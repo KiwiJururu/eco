@@ -29,15 +29,20 @@ public final class SocialAlarmBehavior {
 
     public static void tick(Mob mob, ServerLevel level, SpeciesProfile profile) {
         Optional<PassiveLandSpeciesPolicy> passiveLand = PassiveLandSpeciesPolicy.of(profile.species());
+        Optional<SpecialHostileNetherSpeciesPolicy> specialHostileNether =
+                SpecialHostileNetherSpeciesPolicy.of(profile.species());
         boolean passiveHerd = profile.behaviorFamily() == BehaviorFamily.PASSIVE_HERD
-                && passiveLand.isEmpty();
+                && passiveLand.isEmpty() && specialHostileNether.isEmpty();
         boolean auditedAquatic = AquaticSpeciesPolicy.of(profile.species())
                 .map(AquaticSpeciesPolicy::acceptsSocialAlarm).orElse(false);
         boolean auditedFlying = FlyingColonySpeciesPolicy.of(profile.species())
                 .map(FlyingColonySpeciesPolicy::acceptsSocialAlarm).orElse(false);
         boolean auditedPassiveLand = passiveLand.map(PassiveLandSpeciesPolicy::acceptsSocialAlarm)
                 .orElse(false);
-        if (!passiveHerd && !auditedAquatic && !auditedFlying && !auditedPassiveLand) return;
+        boolean auditedSpecial = specialHostileNether
+                .map(SpecialHostileNetherSpeciesPolicy::acceptsSocialAlarm).orElse(false);
+        if (!passiveHerd && !auditedAquatic && !auditedFlying
+                && !auditedPassiveLand && !auditedSpecial) return;
         if (mob instanceof TamableAnimal tame && tame.isTame()) return;
         if (mob instanceof AbstractHorse horse && !(horse instanceof Camel) && horse.isTamed()) return;
         if (MobMindData.resolveThreat(mob, level).isPresent()) return;

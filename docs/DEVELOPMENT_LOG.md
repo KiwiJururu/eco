@@ -193,3 +193,35 @@ Validated gameplay commit: `5c13de68421321ed8cc55f20c10acdc051da1d3a`
 - no new textures/assets required; human bow-strafe, melee pursuit and group-response pacing QA
   remains PENDING
 - next planned gameplay batch: issue #12, common hostile and Nether species
+
+## Common hostile and Nether ecology 0.2.6
+
+Validated gameplay commit: `dbd85b9a85240f164b796f394a651929b0c782c0`
+
+- completed issue #12 scope for Creeper, Slime, Magma Cube, Blaze, Ghast, Phantom, Vex,
+  Hoglin, Zoglin and Strider
+- added an explicit per-species ownership/hazard/domain policy and
+  `docs/SPECIAL_HOSTILE_NETHER_AI_AUDIT.md`
+- removed all ten special movers from generic patrol, rivalry targeting and navigation recovery;
+  ecology observes valid targets, habitat and territory without issuing movement or aggression
+- preserved Creeper fuse/swell, Slime/Magma Cube size/squish/jump control, Blaze/Ghast ranged
+  flight, Phantom circle/swoop, Vex owner/bound/charge, Hoglin/Zoglin Brain behavior and Strider
+  cold/saddle/rider/boost state
+- made Strider explicitly opt out of the generic passive-herd alarm pass so threat state cannot
+  become an indirect generic movement contract
+- validated LAND, AIR and LAVA destinations against actual world blocks
+- retained persistent ecology only for Blaze, Hoglin, Zoglin and Strider profiles; all physical
+  footprints remain disabled
+- limited automatic reproduction to the profiled Hoglin and Strider species and retained vanilla
+  love state plus capacity/territory gates
+- fixed ecological reproduction bypassing `Hoglin.canFallInLove()` while the Hoglin Brain is
+  `PACIFIED` by a repellent
+- corrected the initial GameTest hypothesis after bytecode inspection: Overworld conversion does
+  not itself block Hoglin love; the actual vanilla exclusion is the `PACIFIED` Brain memory
+- compileJava PASS on Java 17
+- JUnit PASS (49/49)
+- Forge GameTests PASS (49/49)
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human fuse, jump, flight, Brain and lava-riding pacing QA
+  remains PENDING
+- next planned gameplay batch: issue #13, End, cave and special creatures

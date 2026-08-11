@@ -60,6 +60,8 @@ public final class AdaptiveAiManager {
                     case FOX, OCELOT, CAT, POLAR_BEAR, PANDA -> IndependentLandBehavior.tick(mob, level);
                     case SKELETON, STRAY, WITHER_SKELETON, ZOMBIFIED_PIGLIN ->
                             UndeadCombatBehavior.tick(mob, level);
+                    case CREEPER, SLIME, MAGMA_CUBE, BLAZE, GHAST, PHANTOM, VEX,
+                            HOGLIN, ZOGLIN, STRIDER -> SpecialHostileNetherBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }
