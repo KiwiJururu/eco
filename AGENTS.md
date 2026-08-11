@@ -6,10 +6,11 @@ This repository is the source of truth for the Living Ecology / adaptive ecology
 
 Before making changes, read in this order:
 1. `docs/PROJECT_STATE.yaml`
-2. `docs/ROADMAP.md`
-3. `docs/QA_POLICY.md`
-4. `docs/SPECIES_STATUS.csv`
-5. the active GitHub issue/PR for the current family
+2. `docs/DESIGN_DECISIONS.md`
+3. `docs/ROADMAP.md`
+4. `docs/QA_POLICY.md`
+5. `docs/SPECIES_STATUS.csv`
+6. the active GitHub issue/PR for the current family
 
 Do not require chat history to reconstruct project state.
 
@@ -42,6 +43,7 @@ A batch is not done merely because code exists. It must:
 
 ## Project design invariants
 
+`docs/DESIGN_DECISIONS.md` is normative. In short:
 - No omniscience. Information must be perceived, remembered or socially transmitted.
 - State is temporary; memory persists longer.
 - Difficulty comes primarily from behavior, positioning, cooperation and memory rather than raw stat inflation.
