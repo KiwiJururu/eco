@@ -56,7 +56,7 @@ public final class AdaptiveAiManager {
                             AXOLOTL, TURTLE, TADPOLE, FROG -> AquaticBehavior.tick(mob, level);
                     case BAT, PARROT, ALLAY, BEE -> FlyingColonyBehavior.tick(mob, level);
                     case SHEEP, PIG, CHICKEN, RABBIT, HORSE, DONKEY, MULE, CAMEL, GOAT,
-                            LLAMA, TRADER_LLAMA, SNIFFER -> PassiveLandBehavior.tick(mob, level);
+                            LLAMA, SNIFFER -> PassiveLandBehavior.tick(mob, level);
                     case FOX, OCELOT, CAT, POLAR_BEAR, PANDA -> IndependentLandBehavior.tick(mob, level);
                     case SKELETON, STRAY, WITHER_SKELETON, ZOMBIFIED_PIGLIN ->
                             UndeadCombatBehavior.tick(mob, level);
@@ -64,6 +64,8 @@ public final class AdaptiveAiManager {
                             HOGLIN, ZOGLIN, STRIDER -> SpecialHostileNetherBehavior.tick(mob, level);
                     case ENDERMAN, ENDERMITE, SILVERFISH, SHULKER ->
                             EndCaveSpecialBehavior.tick(mob, level);
+                    case VILLAGER, WANDERING_TRADER, IRON_GOLEM, SNOW_GOLEM, TRADER_LLAMA ->
+                            VillageGuardianBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }
