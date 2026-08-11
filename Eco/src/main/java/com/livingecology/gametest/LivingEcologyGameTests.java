@@ -95,25 +95,23 @@ public final class LivingEcologyGameTests {
     }
 
     @GameTest(template = "test_arena")
-    public static void zombieHordePrioritizesWolfWar(GameTestHelper helper) {
+    public static void zombieFamilyHordePrioritizesWolfWar(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        Wolf wolf = spawn(helper, EntityType.WOLF, 7, 1, 6);
-        Zombie a = spawn(helper, EntityType.ZOMBIE, 3, 1, 5);
-        Zombie b = spawn(helper, EntityType.ZOMBIE, 3, 1, 6);
-        Zombie c = spawn(helper, EntityType.ZOMBIE, 3, 1, 7);
+        Wolf wolf = spawn(helper, EntityType.WOLF, 8, 1, 6);
+        Zombie zombie = spawn(helper, EntityType.ZOMBIE, 3, 1, 4);
+        Zombie husk = spawn(helper, EntityType.HUSK, 3, 1, 5);
+        Zombie villager = spawn(helper, EntityType.ZOMBIE_VILLAGER, 3, 1, 6);
+        Zombie drowned = spawn(helper, EntityType.DROWNED, 3, 1, 7);
         MobMindData.initialize(wolf, level);
-        MobMindData.initialize(a, level);
-        MobMindData.initialize(b, level);
-        MobMindData.initialize(c, level);
+        Zombie[] horde = {zombie, husk, villager, drowned};
+        for (Zombie member : horde) MobMindData.initialize(member, level);
 
-        ZombieBehavior.tick(a, level);
-        ZombieBehavior.tick(b, level);
-        ZombieBehavior.tick(c, level);
+        for (Zombie member : horde) ZombieBehavior.tick(member, level);
 
         int targetingWolf = 0;
-        for (Zombie zombie : new Zombie[]{a, b, c}) if (zombie.getTarget() == wolf) targetingWolf++;
-        helper.assertTrue(targetingWolf >= 2,
-                "Horde did not propagate Wolf target; targetingWolf=" + targetingWolf);
+        for (Zombie member : horde) if (member.getTarget() == wolf) targetingWolf++;
+        helper.assertTrue(targetingWolf >= 3,
+                "Mixed Zombie/Husk/ZombieVillager/Drowned horde did not share Wolf war target; targetingWolf=" + targetingWolf);
         helper.succeed();
     }
 
