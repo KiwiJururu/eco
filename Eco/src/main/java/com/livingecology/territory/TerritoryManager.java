@@ -282,345 +282,4 @@ public final class TerritoryManager {
                                      TerritoryRecord loser, RelationRecord relation) {
         int winnerMax = Math.max(2, SpeciesProfile.of(winner.species()).maxTerritoryRadius());
         winner.setRadiusChunks(Math.min(winnerMax, winner.radiusChunks() + 1));
-        loser.setRadiusChunks(Math.max(2, loser.radiusChunks() - 1));
-        winner.addPressure(4);
-        loser.addPressure(-8);
-        if (loser.pressure() < 25) loser.setState(TerritoryState.RECOVERING);
-
-        BlockPos oldCenter = loser.center();
-        double dx = loser.center().getX() - winner.center().getX();
-        double dz = loser.center().getZ() - winner.center().getZ();
-        double len = Math.sqrt(dx * dx + dz * dz);
-        if (len < 0.1D) { dx = 1.0D; dz = 0.0D; len = 1.0D; }
-        int shiftX = (int) Math.round(dx / len * 16.0D);
-        int shiftZ = (int) Math.round(dz / len * 16.0D);
-        loser.setCenter(oldCenter.offset(shiftX, 0, shiftZ));
-        data.reindex(loser, oldCenter);
-        relation.resetMomentum();
-        data.setDirty();
-    }
-
-    public static TerritoryContext contextForMob(Mob mob, ServerLevel level) {
-        return contextAt(level, mob.blockPosition(), MobMindData.territoryId(mob));
-    }
-
-    public static TerritoryContext contextAt(ServerLevel level, BlockPos pos, long ownId) {
-        TerritorySavedData data = TerritorySavedData.get(level);
-        TerritoryRecord own = data.get(ownId);
-        TerritoryZone ownZone = own == null ? TerritoryZone.OUTSIDE : zoneFor(own, pos);
-
-        TerritoryRecord first = null;
-        TerritoryRecord second = null;
-        double firstInfluence = 0.0D;
-        double secondInfluence = 0.0D;
-        for (TerritoryRecord record : data.near(pos)) {
-            double influence = influenceAt(record, pos);
-            if (influence <= 0.0D) continue;
-            if (influence > firstInfluence) {
-                second = first;
-                secondInfluence = firstInfluence;
-                first = record;
-                firstInfluence = influence;
-            } else if (influence > secondInfluence) {
-                second = record;
-                secondInfluence = influence;
-            }
-        }
-
-        boolean noMansLand = false;
-        boolean contested = false;
-        int tension = 0;
-        int affinity = 0;
-        if (first != null && second != null) {
-            boolean overlap = firstInfluence > 8.0D && secondInfluence > 8.0D;
-            tension = RelationService.tension(data, first, second, overlap);
-            affinity = RelationService.effectiveAffinity(data, first, second);
-            RelationshipProfile natural = RelationService.natural(first.species(), second.species());
-            noMansLand = natural.kind() == RelationKind.BORDERED && overlap
-                    && tension >= 20 && tension < 70 && Math.abs(firstInfluence - secondInfluence) <= 15.0D;
-            contested = overlap && tension >= 60;
-        }
-        return new TerritoryContext(own, ownZone, first, second, noMansLand, contested, tension, affinity);
-    }
-
-    public static TerritoryZone zoneFor(TerritoryRecord record, BlockPos pos) {
-        double radius = effectiveRadiusBlocks(record, pos);
-        double distance = horizontalDistance(record.center(), pos);
-        if (distance > radius || record.pressure() <= 0) return TerritoryZone.OUTSIDE;
-        double normalized = distance / Math.max(1.0D, radius);
-        if (normalized <= 0.20D) return TerritoryZone.CORE;
-        if (normalized <= 0.65D) return TerritoryZone.INNER;
-        return TerritoryZone.OUTER;
-    }
-
-    public static double influenceAt(TerritoryRecord record, BlockPos pos) {
-        double radius = effectiveRadiusBlocks(record, pos);
-        double distance = horizontalDistance(record.center(), pos);
-        if (distance >= radius) return 0.0D;
-        double factor = 1.0D - distance / Math.max(1.0D, radius);
-        return record.pressure() * factor;
-    }
-
-    private static double effectiveRadiusBlocks(TerritoryRecord record, BlockPos pos) {
-        int chunkX = pos.getX() >> 4;
-        int chunkZ = pos.getZ() >> 4;
-        double edgeNoise = 0.88D + HashNoise.unit(HashNoise.combine(record.seed(), chunkX, chunkZ)) * 0.24D;
-        return record.radiusChunks() * 16.0D * edgeNoise;
-    }
-
-    private static double horizontalDistance(BlockPos a, BlockPos b) {
-        double dx = a.getX() - b.getX();
-        double dz = a.getZ() - b.getZ();
-        return Math.sqrt(dx * dx + dz * dz);
-    }
-
-    public static void recordAggression(Mob victim, LivingEntity attacker, ServerLevel level, int severity) {
-        if (!(attacker instanceof Mob attackerMob)) return;
-        if (!MobMindData.supports(attackerMob)) return;
-        ensureTerritory(victim, level);
-        ensureTerritory(attackerMob, level);
-        long a = MobMindData.territoryId(victim);
-        long b = MobMindData.territoryId(attackerMob);
-        if (a <= 0 || b <= 0 || a == b) return;
-        TerritorySavedData data = TerritorySavedData.get(level);
-        RelationRecord relation = data.relation(a, b);
-        if (relation != null) {
-            relation.addRivalry(Math.max(1, severity), level.getGameTime());
-            relation.adjustAffinity(-Math.max(1, severity / 2));
-            data.setDirty();
-        }
-    }
-
-    public static void recordCooperation(Mob helper, Mob ally, ServerLevel level, int amount) {
-        ensureTerritory(helper, level);
-        ensureTerritory(ally, level);
-        long a = MobMindData.territoryId(helper);
-        long b = MobMindData.territoryId(ally);
-        if (a <= 0 || b <= 0 || a == b) return;
-        TerritorySavedData data = TerritorySavedData.get(level);
-        RelationRecord relation = data.relation(a, b);
-        if (relation != null) {
-            relation.addAffinity(Math.max(1, amount), level.getGameTime());
-            relation.addRivalry(-1, level.getGameTime());
-            data.setDirty();
-        }
-    }
-
-    public static void onCobwebBroken(ServerLevel level, BlockPos pos) {
-        TerritorySavedData data = TerritorySavedData.get(level);
-        TerritoryRecord spider = data.near(pos).stream()
-                .filter(r -> SpeciesProfile.of(r.species()).footprintType() == FootprintType.COBWEB
-                        && zoneFor(r, pos) != TerritoryZone.OUTSIDE)
-                .max(Comparator.comparingDouble(r -> influenceAt(r, pos))).orElse(null);
-        if (spider == null) return;
-        spider.addFootprintProgress(-1);
-        if (zoneFor(spider, pos) == TerritoryZone.CORE) spider.addPressure(-1);
-        data.setDirty();
-    }
-
-    /** Called by the vanilla breeding event. Births raise local population/pressure and can expand a healthy territory. */
-    public static void recordBirth(Mob parent, Mob child, ServerLevel level) {
-        TerritoryRecord territory = ensureTerritory(parent, level);
-        if (territory == null) return;
-        MobMindData.initialize(child, level);
-        MobMindData.setTerritoryId(child, territory.id());
-        territory.setPopulation(territory.population() + 1);
-        territory.addPressure(2);
-        EnvironmentSnapshot env = EnvironmentManager.snapshot(level, territory.center(), territory.species());
-        SpeciesProfile profile = SpeciesProfile.of(territory.species());
-        int desired = EcologyMath.desiredRadius(profile, territory.radiusChunks(), territory.population(), env.habitability());
-        if (desired > territory.radiusChunks()) territory.setRadiusChunks(desired);
-        TerritorySavedData.get(level).setDirty();
-    }
-
-    public static void boostBossTerritory(Mob boss, ServerLevel level) {
-        if (!MobMindData.isBoss(boss)) return;
-        TerritoryRecord territory = ensureTerritory(boss, level);
-        if (territory == null) return;
-        territory.setLeader(boss.getUUID());
-        if (level.getGameTime() % 200L == 0L) territory.addPressure(1);
-        TerritorySavedData.get(level).setDirty();
-    }
-
-    private static void materializeFootprints(ServerLevel level, int blockBudget, int maxChecks) {
-        if (blockBudget <= 0 || maxChecks <= 0) return;
-        TerritorySavedData data = TerritorySavedData.get(level);
-        List<TerritoryRecord> records = activeTerritories(level).stream()
-                .filter(r -> SpeciesProfile.of(r.species()).footprintType() != FootprintType.NONE)
-                .sorted(Comparator.comparingLong(TerritoryRecord::id)).toList();
-        if (records.isEmpty()) return;
-
-        int start = (int) Math.floorMod(level.getGameTime(), records.size());
-        int changed = 0;
-        int checks = 0;
-        for (int offset = 0; offset < records.size() && changed < blockBudget && checks < maxChecks; offset++) {
-            TerritoryRecord record = records.get((start + offset) % records.size());
-            FootprintType type = SpeciesProfile.of(record.species()).footprintType();
-            int desired = record.desiredFootprint();
-            boolean grow = record.footprintProgress() < desired;
-            boolean decay = type == FootprintType.COBWEB && record.footprintProgress() > desired;
-            if (!grow && !decay) continue;
-
-            while (changed < blockBudget && checks < maxChecks) {
-                checks++;
-                int cursor = record.nextFootprintCursor();
-                BlockPos candidate = footprintCandidate(record, cursor);
-                if (!level.hasChunkAt(candidate)) continue;
-                TerritoryZone zone = zoneFor(record, candidate);
-                if (zone == TerritoryZone.OUTSIDE) continue;
-
-                if (grow) {
-                    double chance = switch (zone) {
-                        case CORE -> 0.90D;
-                        case INNER -> 0.58D;
-                        case OUTER -> 0.24D;
-                        case OUTSIDE -> 0.0D;
-                    };
-                    if (HashNoise.unit(HashNoise.combine(record.seed(), cursor, 991L)) > chance) continue;
-                    if (tryPlaceFootprint(level, record, type, candidate, cursor)) {
-                        record.addFootprintProgress(1);
-                        changed++;
-                        break;
-                    }
-                } else if (type == FootprintType.COBWEB && level.getBlockState(candidate).is(Blocks.COBWEB)
-                        && noNearbyPlayer(level, candidate, 7.0D)) {
-                    level.setBlock(candidate, Blocks.AIR.defaultBlockState(), 3);
-                    record.addFootprintProgress(-1);
-                    changed++;
-                    break;
-                }
-            }
-        }
-        if (changed > 0 || checks > 0) data.setDirty();
-    }
-
-    private static boolean tryPlaceFootprint(ServerLevel level, TerritoryRecord record, FootprintType type,
-                                             BlockPos raw, int cursor) {
-        return switch (type) {
-            case COBWEB -> tryPlaceCobweb(level, raw);
-            case FLOWERS -> tryPlaceFlower(level, raw, record.seed(), cursor);
-            case TRAIL -> tryPlaceTrail(level, raw);
-            case BURROW -> tryPlaceBurrowMark(level, raw);
-            case MUSHROOMS -> tryPlaceMushroom(level, raw, record.seed(), cursor);
-            case NONE -> false;
-        };
-    }
-
-    private static BlockPos footprintCandidate(TerritoryRecord record, int cursor) {
-        long h1 = HashNoise.combine(record.seed(), cursor, 0x1f123bb5L);
-        long h2 = HashNoise.mix64(h1 ^ 0x5deece66dL);
-        double angle = HashNoise.unit(h1) * Math.PI * 2.0D;
-        double maxRadius = record.radiusChunks() * 16.0D * 0.86D;
-        double distance = Math.sqrt(HashNoise.unit(h2)) * maxRadius;
-        int dx = (int) Math.round(Math.cos(angle) * distance);
-        int dz = (int) Math.round(Math.sin(angle) * distance);
-        int dy = HashNoise.signed(h2 ^ 0x123456789abcdefL, 7);
-        return record.core().offset(dx, dy, dz);
-    }
-
-    private static BlockPos findSurface(ServerLevel level, BlockPos around) {
-        for (int d = 0; d <= 8; d++) {
-            int[] ys = d == 0 ? new int[]{around.getY()} : new int[]{around.getY() + d, around.getY() - d};
-            for (int y : ys) {
-                BlockPos ground = new BlockPos(around.getX(), y, around.getZ());
-                if (!level.hasChunkAt(ground)) continue;
-                BlockState state = level.getBlockState(ground);
-                if (!state.isAir() && level.getBlockState(ground.above()).isAir()) return ground;
-            }
-        }
-        return null;
-    }
-
-    private static boolean tryPlaceFlower(ServerLevel level, BlockPos raw, long seed, int cursor) {
-        BlockPos ground = findSurface(level, raw);
-        if (ground == null || !noNearbyPlayer(level, ground, 9.0D) || level.getBlockEntity(ground) != null) return false;
-        BlockState soil = level.getBlockState(ground);
-        if (!(soil.is(Blocks.GRASS_BLOCK) || soil.is(Blocks.DIRT) || soil.is(Blocks.PODZOL))) return false;
-        BlockPos pos = ground.above();
-        BlockState flower = switch (HashNoise.bounded(HashNoise.combine(seed, cursor, 0xabc11L), 4)) {
-            case 0 -> Blocks.DANDELION.defaultBlockState();
-            case 1 -> Blocks.POPPY.defaultBlockState();
-            case 2 -> Blocks.AZURE_BLUET.defaultBlockState();
-            default -> Blocks.OXEYE_DAISY.defaultBlockState();
-        };
-        return level.getBlockState(pos).isAir() && flower.canSurvive(level, pos) && level.setBlock(pos, flower, 3);
-    }
-
-    private static boolean tryPlaceTrail(ServerLevel level, BlockPos raw) {
-        BlockPos ground = findSurface(level, raw);
-        if (ground == null || !noNearbyPlayer(level, ground, 10.0D) || level.getBlockEntity(ground) != null) return false;
-        BlockState state = level.getBlockState(ground);
-        if (!state.is(Blocks.GRASS_BLOCK)) return false;
-        return level.setBlock(ground, Blocks.COARSE_DIRT.defaultBlockState(), 3);
-    }
-
-    private static boolean tryPlaceBurrowMark(ServerLevel level, BlockPos raw) {
-        BlockPos ground = findSurface(level, raw);
-        if (ground == null || !noNearbyPlayer(level, ground, 10.0D) || level.getBlockEntity(ground) != null) return false;
-        BlockState state = level.getBlockState(ground);
-        if (!(state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT))) return false;
-        // Visual sign only: never opens a hole, so terrain/pathfinding cannot be broken by the footprint system.
-        return level.setBlock(ground, Blocks.COARSE_DIRT.defaultBlockState(), 3);
-    }
-
-    private static boolean tryPlaceMushroom(ServerLevel level, BlockPos raw, long seed, int cursor) {
-        BlockPos ground = findSurface(level, raw);
-        if (ground == null || !noNearbyPlayer(level, ground, 9.0D) || level.getBlockEntity(ground) != null) return false;
-        BlockState soil = level.getBlockState(ground);
-        if (!(soil.is(Blocks.MYCELIUM) || soil.is(Blocks.GRASS_BLOCK) || soil.is(Blocks.DIRT) || soil.is(Blocks.PODZOL))) return false;
-        BlockPos pos = ground.above();
-        BlockState mushroom = HashNoise.bounded(HashNoise.combine(seed, cursor, 0x9911L), 2) == 0
-                ? Blocks.RED_MUSHROOM.defaultBlockState() : Blocks.BROWN_MUSHROOM.defaultBlockState();
-        return level.getBlockState(pos).isAir() && mushroom.canSurvive(level, pos) && level.setBlock(pos, mushroom, 3);
-    }
-
-    private static boolean noNearbyPlayer(ServerLevel level, BlockPos pos, double radius) {
-        return level.getNearestPlayer(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, radius, false) == null;
-    }
-
-    private static boolean tryPlaceCobweb(ServerLevel level, BlockPos pos) {
-        if (!level.getBlockState(pos).isAir()) return false;
-        if (level.canSeeSky(pos)) return false;
-        if (!noNearbyPlayer(level, pos, 7.0D)) return false;
-
-        boolean naturalSupport = false;
-        for (Direction direction : Direction.values()) {
-            BlockPos supportPos = pos.relative(direction);
-            BlockState support = level.getBlockState(supportPos);
-            if (level.getBlockEntity(supportPos) != null) return false;
-            if (isNaturalSupport(support)
-                    && support.isFaceSturdy(level, supportPos, direction.getOpposite())) {
-                naturalSupport = true;
-            }
-        }
-        if (!naturalSupport) return false;
-        return level.setBlock(pos, Blocks.COBWEB.defaultBlockState(), 3);
-    }
-
-    private static boolean isNaturalSupport(BlockState state) {
-        return state.is(Blocks.STONE) || state.is(Blocks.DEEPSLATE) || state.is(Blocks.TUFF)
-                || state.is(Blocks.GRANITE) || state.is(Blocks.DIORITE) || state.is(Blocks.ANDESITE)
-                || state.is(Blocks.DIRT) || state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.PODZOL)
-                || state.is(Blocks.OAK_LOG) || state.is(Blocks.SPRUCE_LOG) || state.is(Blocks.BIRCH_LOG)
-                || state.is(Blocks.JUNGLE_LOG) || state.is(Blocks.ACACIA_LOG) || state.is(Blocks.DARK_OAK_LOG)
-                || state.is(Blocks.MANGROVE_LOG) || state.is(Blocks.CHERRY_LOG);
-    }
-
-    private static boolean isPlayerBound(Mob mob) {
-        if (mob instanceof TamableAnimal tame && tame.isTame()) return true;
-        return mob instanceof AbstractHorse horse && horse.isTamed();
-    }
-
-    public static void setSimulationScale(ServerLevel level, double scale) {
-        long now = level.getGameTime();
-        // Rebase all abstract clocks before changing scale so the new multiplier is never retroactive.
-        EnvironmentSavedData.get(level).rebase(now);
-        TerritorySavedData.get(level).setSimulationScale(scale, now);
-    }
-
-    public static double simulationScale(ServerLevel level) {
-        return TerritorySavedData.get(level).simulationScale();
-    }
-
-    private static double sqr(double value) { return value * value; }
-}
+        loser.setRadiusChunks(Math.max(2, loser.radius×^ý¶‰žËkºwµçP€´‘¥ÍÑ…¹”€¼5…Ñ ¹µ…à Ä¸Á°É…‘¥ÕÌ¤ì(€€€€€€€É•ÑÕÉ¸É•½É¹ÁÉ•ÍÍÕÉ” ¤€¨™…Ñ½Èì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‘½Õ‰±”•™™•Ñ¥Ù•I…‘¥ÕÍ	±½­Ì¡Q•ÉÉ¥Ñ½ÉåI•½ÉÉ•½É°	±½­A½ÌÁ½Ì¤ì(€€€€€€€¥¹Ð¡Õ¹­`€ôÁ½Ì¹•Ñ` ¤€øø€Ðì(€€€€€€€¥¹Ð¡Õ¹­h€ôÁ½Ì¹•Ñh ¤€øø€Ðì(€€€€€€€‘½Õ‰±”•‘•9½¥Í”€ô€À¸àá€¬!…Í¡9½¥Í”¹Õ¹¥Ð¡!…Í¡9½¥Í”¹½µ‰¥¹”¡É•½É¹Í•• ¤°¡Õ¹­`°¡Õ¹­h¤¤€¨€À¸ÈÑì(€€€€€€€É•ÑÕÉ¸É•½É¹É…‘¥ÕÍ¡Õ¹­Ì ¤€¨€ÄØ¸Á€¨•‘•9½¥Í”ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‘½Õ‰±”¡½É¥é½¹Ñ…±¥ÍÑ…¹”¡	±½­A½Ì„°	±½­A½Ìˆ¤ì(€€€€€€€‘½Õ‰±”‘à€ô„¹•Ñ` ¤€´ˆ¹•Ñ` ¤ì(€€€€€€€‘½Õ‰±”‘è€ô„¹•Ñh ¤€´ˆ¹•Ñh ¤ì(€€€€€€€É•ÑÕÉ¸5…Ñ ¹ÍÅÉÐ¡‘à€¨‘à€¬‘è€¨‘è¤ì(€€€ô((€€€ÁÕ‰±¥ŒÍÑ…Ñ¥ŒÙ½¥É•½É‘É•ÍÍ¥½¸¡5½ˆÙ¥Ñ¥´°1¥Ù¥¹¹Ñ¥Ñä…ÑÑ…­•È°M•ÉÙ•É1•Ù•°±•Ù•°°¥¹ÐÍ•Ù•É¥Ñä¤ì(€€€€€€€¥˜€ „¡…ÑÑ…­•È¥¹ÍÑ…¹•½˜5½ˆ…ÑÑ…­•É5½ˆ¤¤É•ÑÕÉ¸ì(€€€€€€€¥˜€ …5½‰5¥¹‘…Ñ„¹ÍÕÁÁ½ÉÑÌ¡…ÑÑ…­•É5½ˆ¤¤É•ÑÕÉ¸ì(€€€€€€€•¹ÍÕÉ•Q•ÉÉ¥Ñ½Éä¡Ù¥Ñ¥´°±•Ù•°¤ì(€€€€€€€•¹ÍÕÉ•Q•ÉÉ¥Ñ½Éä¡…ÑÑ…­•É5½ˆ°±•Ù•°¤ì(€€€€€€€±½¹œ„€ô5½‰5¥¹‘…Ñ„¹Ñ•ÉÉ¥Ñ½Éå%¡Ù¥Ñ¥´¤ì(€€€€€€€±½¹œˆ€ô5½‰5¥¹‘…Ñ„¹Ñ•ÉÉ¥Ñ½Éå%¡…ÑÑ…­•É5½ˆ¤ì(€€€€€€€¥˜€¡„€ðô€Àñðˆ€ðô€Àñð„€ôôˆ¤É•ÑÕÉ¸ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„‘…Ñ„€ôQ•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤ì(€€€€€€€I•±…Ñ¥½¹I•½ÉÉ•±…Ñ¥½¸€ô‘…Ñ„¹É•±…Ñ¥½¸¡„°ˆ¤ì(€€€€€€€¥˜€¡É•±…Ñ¥½¸€„ô¹Õ±°¤ì(€€€€€€€€€€€É•±…Ñ¥½¸¹…‘‘I¥Ù…±Éä¡5…Ñ ¹µ…à Ä°Í•Ù•É¥Ñä¤°±•Ù•°¹•Ñ…µ•Q¥µ” ¤¤ì(€€€€€€€€€€€É•±…Ñ¥½¸¹…‘©ÕÍÑ™™¥¹¥Ñä µ5…Ñ ¹µ…à Ä°Í•Ù•É¥Ñä€¼€È¤¤ì(€€€€€€€€€€€‘…Ñ„¹Í•Ñ¥ÉÑä ¤ì(€€€€€€€ô(€€€ô((€€€ÁÕ‰±¥ŒÍÑ…Ñ¥ŒÙ½¥É•½É‘½½Á•É…Ñ¥½¸¡5½ˆ¡•±Á•È°5½ˆ…±±ä°M•ÉÙ•É1•Ù•°±•Ù•°°¥¹Ð…µ½Õ¹Ð¤ì(€€€€€€€•¹ÍÕÉ•Q•ÉÉ¥Ñ½Éä¡¡•±Á•È°±•Ù•°¤ì(€€€€€€€•¹ÍÕÉ•Q•ÉÉ¥Ñ½Éä¡…±±ä°±•Ù•°¤ì(€€€€€€€±½¹œ„€ô5½‰5¥¹‘…Ñ„¹Ñ•ÉÉ¥Ñ½Éå%¡¡•±Á•È¤ì(€€€€€€€±½¹œˆ€ô5½‰5¥¹‘…Ñ„¹Ñ•ÉÉ¥Ñ½Éå%¡…±±ä¤ì(€€€€€€€¥˜€¡„€ðô€Àñðˆ€ðô€Àñð„€ôôˆ¤É•ÑÕÉ¸ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„‘…Ñ„€ôQ•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤ì(€€€€€€€I•±…Ñ¥½¹I•½ÉÉ•±…Ñ¥½¸€ô‘…Ñ„¹É•±…Ñ¥½¸¡„°ˆ¤ì(€€€€€€€¥˜€¡É•±…Ñ¥½¸€„ô¹Õ±°¤ì(€€€€€€€€€€€É•±…Ñ¥½¸¹…‘‘™™¥¹¥Ñä¡5…Ñ ¹µ…à Ä°…µ½Õ¹Ð¤°±•Ù•°¹•Ñ…µ•Q¥µ” ¤¤ì(€€€€€€€€€€€É•±…Ñ¥½¸¹…‘‘I¥Ù…±Éä ´Ä°±•Ù•°¹•Ñ…µ•Q¥µ” ¤¤ì(€€€€€€€€€€€‘…Ñ„¹Í•Ñ¥ÉÑä ¤ì(€€€€€€€ô(€€€ô((€€€€¼¨¨(€€€€€¨5½Ù•Ì„Ñ•ÉÉ¥Ñ½ÉäÌÁ•ÉÍ¥ÍÑ••¹Ñ•È½½É”Ñ¼„±½…‘•°¹•…É‰ä•½±½¥…°…¹¡½È¸(€€€€€¨…±±•ÉÌÙ…±¥‘…Ñ”Ñ¡”…¹¡½ÈÑåÁ”€¡™½È•á…µÁ±”„	•”¡¥Ù”¤ìÑ¡¥Ìµ•Ñ¡½ÍÕÁÁ±¥•ÌÑ¡”Í¡…É•(€€€€€¨¹¼µ™½É•µ¡Õ¹¬°‰½Õ¹‘•µ‘¥ÍÑ…¹”…¹ÍÁ…Ñ¥…°µ¥¹‘•à¥¹Ù…É¥…¹ÑÌ¸(€€€€€¨¼(€€€ÁÕ‰±¥ŒÍÑ…Ñ¥Œ‰½½±•…¸É••¹Ñ•É=¹1½…‘•‘½É”¡Q•ÉÉ¥Ñ½ÉåI•½ÉÑ•ÉÉ¥Ñ½Éä°M•ÉÙ•É1•Ù•°±•Ù•°°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€	±½­A½Ì…¹¡½È°‘½Õ‰±”µ…á¥ÍÑ…¹”¤ì(€€€€€€€¥˜€¡Ñ•ÉÉ¥Ñ½Éä€ôô¹Õ±°ñð…¹¡½È€ôô¹Õ±°ñð€…±•Ù•°¹¡…Í¡Õ¹­Ð¡…¹¡½È¤¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€‘½Õ‰±”‰½Õ¹‘•‘¥ÍÑ…¹”€ô5Ñ ¹±…µÀ¡µ…á¥ÍÑ…¹”°€Ä¸Á°€ØÐ¸Á¤ì(€€€€€€€¥˜€¡Ñ•ÉÉ¥Ñ½Éä¹•¹Ñ•È ¤¹‘¥ÍÑMÅÈ¡…¹¡½È¤€ø‰½Õ¹‘•‘¥ÍÑ…¹”€¨‰½Õ¹‘•‘¥ÍÑ…¹”¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€¥˜€¡Ñ•ÉÉ¥Ñ½Éä¹•¹Ñ•È ¤¹•ÅÕ…±Ì¡…¹¡½È¤€˜˜Ñ•ÉÉ¥Ñ½Éä¹½É” ¤¹•ÅÕ…±Ì¡…¹¡½È¤¤É•ÑÕÉ¸ÑÉÕ”ì((€€€€€€€	±½­A½Ì½±‘•¹Ñ•È€ôÑ•ÉÉ¥Ñ½Éä¹•¹Ñ•È ¤ì(€€€€€€€Ñ•ÉÉ¥Ñ½Éä¹Í•Ñ•¹Ñ•È¡…¹¡½È¤ì(€€€€€€€Ñ•ÉÉ¥Ñ½Éä¹Í•Ñ½É”¡…¹¡½È¤ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤¹É•¥¹‘•à¡Ñ•ÉÉ¥Ñ½Éä°½±‘•¹Ñ•È¤ì(€€€€€€€É•ÑÕÉ¸ÑÉÕ”ì(€€€ô((€€€ÁÕ‰±¥ŒÍÑ…Ñ¥ŒÙ½¥½¹½‰Ý•‰	É½­•¸¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½ÌÁ½Ì¤ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„‘…Ñ„€ôQ•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåI•½ÉÍÁ¥‘•È€ô‘…Ñ„¹¹•…È¡Á½Ì¤¹ÍÑÉ•…´ ¤(€€€€€€€€€€€€€€€€¹™¥±Ñ•È¡È€´øMÁ•¥•ÍAÉ½™¥±”¹½˜¡È¹ÍÁ•¥•Ì ¤¤¹™½½ÑÁÉ¥¹ÑQåÁ” ¤€ôô½½ÑÁÉ¥¹ÑQåÁ”¹=	](€€€€€€€€€€€€€€€€€€€€€€€€˜˜é½¹•½È¡È°Á½Ì¤€„ôQ•ÉÉ¥Ñ½Éåi½¹”¹=UQM%¤(€€€€€€€€€€€€€€€€¹µ…à¡½µÁ…É…Ñ½È¹½µÁ…É¥¹½Õ‰±”¡È€´ø¥¹™±Õ•¹•Ð¡È°Á½Ì¤¤¤¹½É±Í”¡¹Õ±°¤ì(€€€€€€€¥˜€¡ÍÁ¥‘•È€ôô¹Õ±°¤É•ÑÕÉ¸ì(€€€€€€€ÍÁ¥‘•È¹…‘‘½½ÑÁÉ¥¹ÑAÉ½É•ÍÌ ´Ä¤ì(€€€€€€€¥˜€¡é½¹•½È¡ÍÁ¥‘•È°Á½Ì¤€ôôQ•ÉÉ¥Ñ½Éåi½¹”¹=I¤ÍÁ¥‘•È¹…‘‘AÉ•ÍÍÕÉ” ´Ä¤ì(€€€€€€€‘…Ñ„¹Í•Ñ¥ÉÑä ¤ì(€€€ô((€€€€¼¨¨…±±•‰äÑ¡”Ù…¹¥±±„‰É••‘¥¹œ•Ù•¹Ð¸	¥ÉÑ¡ÌÉ…¥Í”±½…°Á½ÁÕ±…Ñ¥½¸½ÁÉ•ÍÍÕÉ”…¹…¸•áÁ…¹„¡•…±Ñ¡äÑ•ÉÉ¥Ñ½Éä¸€¨¼(€€€ÁÕ‰±¥ŒÍÑ…Ñ¥ŒÙ½¥É•½É‘	¥ÉÑ ¡5½ˆÁ…É•¹Ð°5½ˆ¡¥±°M•ÉÙ•É1•Ù•°±•Ù•°¤ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåI•½ÉÑ•ÉÉ¥Ñ½Éä€ô•¹ÍÕÉ•Q•ÉÉ¥Ñ½Éä¡Á…É•¹Ð°±•Ù•°¤ì(€€€€€€€¥˜€¡Ñ•ÉÉ¥Ñ½Éä€ôô¹Õ±°¤É•ÑÕÉ¸ì(€€€€€€€5½‰5¥¹‘…Ñ„¹¥¹¥Ñ¥…±¥é”¡¡¥±°±•Ù•°¤ì(€€€€€€€5½‰5¥¹‘…Ñ„¹Í•ÑQ•ÉÉ¥Ñ½Éå%¡¡¥±°Ñ•ÉÉ¥Ñ½Éä¹¥ ¤¤ì(€€€€€€€Ñ•ÉÉ¥Ñ½Éä¹Í•ÑA½ÁÕ±…Ñ¥½¸¡Ñ•ÉÉ¥Ñ½Éä¹Á½ÁÕ±…Ñ¥½¸ ¤€¬€Ä¤ì(€€€€€€€Ñ•ÉÉ¥Ñ½Éä¹…‘‘AÉ•ÍÍÕÉ” È¤ì(€€€€€€€¹Ù¥É½¹µ•¹ÑM¹…ÁÍ¡½Ð•¹Ø€ô¹Ù¥É½¹µ•¹Ñ5…¹…•È¹Í¹…ÁÍ¡½Ð¡±•Ù•°°Ñ•ÉÉ¥Ñ½Éä¹•¹Ñ•È ¤°Ñ•ÉÉ¥Ñ½Éä¹ÍÁ•¥•Ì ¤¤ì(€€€€€€€MÁ•¥•ÍAÉ½™¥±”ÁÉ½™¥±”€ôMÁ•¥•ÍAÉ½™¥±”¹½˜¡Ñ•ÉÉ¥Ñ½Éä¹ÍÁ•¥•Ì ¤¤ì(€€€€€€€¥¹Ð‘•Í¥É•€ô½±½å5…Ñ ¹‘•Í¥É•‘I…‘¥ÕÌ¡ÁÉ½™¥±”°Ñ•ÉÉ¥Ñ½Éä¹É…‘¥ÕÍ¡Õ¹­Ì ¤°Ñ•ÉÉ¥Ñ½Éä¹Á½ÁÕ±…Ñ¥½¸ ¤°•¹Ø¹¡…‰¥Ñ…‰¥±¥Ñä ¤¤ì(€€€€€€€¥˜€¡‘•Í¥É•€øÑ•ÉÉ¥Ñ½Éä¹É…‘¥ÕÍ¡Õ¹­Ì ¤¤Ñ•ÉÉ¥Ñ½Éä¹Í•ÑI…‘¥ÕÍ¡Õ¹­Ì¡‘•Í¥É•¤ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤¹Í•Ñ¥ÉÑä ¤ì(€€€ô((€€€ÁÕ‰±¥ŒÍÑ…Ñ¥ŒÙ½¥‰½½ÍÑ	½ÍÍQ•ÉÉ¥Ñ½Éä¡5½ˆ‰½ÍÌ°M•ÉÙ•É1•Ù•°±•Ù•°¤ì(€€€€€€€¥˜€ …5½‰5¥¹‘…Ñ„¹¥Í	½ÍÌ¡‰½ÍÌ¤¤É•ÑÕÉ¸ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåI•½ÉÑ•ÉÉ¥Ñ½Éä€ô•¹ÍÕÉ•Q•ÉÉ¥Ñ½Éä¡‰½ÍÌ°±•Ù•°¤ì(€€€€€€€¥˜€¡Ñ•ÉÉ¥Ñ½Éä€ôô¹Õ±°¤É•ÑÕÉ¸ì(€€€€€€€Ñ•ÉÉ¥Ñ½Éä¹Í•Ñ1•…‘•È¡‰½ÍÌ¹•ÑUU% ¤¤ì(€€€€€€€¥˜€¡±•Ù•°¹•Ñ…µ•Q¥µ” ¤€”€ÈÀÁ0€ôô€Á0¤Ñ•ÉÉ¥Ñ½Éä¹…‘‘AÉ•ÍÍÕÉ” Ä¤ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤¹Í•Ñ¥ÉÑä ¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒÙ½¥µ…Ñ•É¥…±¥é•½½ÑÁÉ¥¹ÑÌ¡M•ÉÙ•É1•Ù•°±•Ù•°°¥¹Ð‰±½­	Õ‘•Ð°¥¹Ðµ…á¡•­Ì¤ì(€€€€€€€¥˜€¡‰±½­	Õ‘•Ð€ðô€Àñðµ…á¡•­Ì€ðô€À¤É•ÑÕÉ¸ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„‘…Ñ„€ôQ•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤ì(€€€€€€€1¥ÍÐñQ•ÉÉ¥Ñ½ÉåI•½ÉøÉ•½É‘Ì€ô…Ñ¥Ù•Q•ÉÉ¥Ñ½É¥•Ì¡±•Ù•°¤¹ÍÑÉ•…´ ¤(€€€€€€€€€€€€€€€€¹™¥±Ñ•È¡È€´øMÁ•¥•ÍAÉ½™¥±”¹½˜¡È¹ÍÁ•¥•Ì ¤¤¹™½½ÑÁÉ¥¹ÑQåÁ” ¤€„ô½½ÑÁÉ¥¹ÑQåÁ”¹9=9¤(€€€€€€€€€€€€€€€€¹Í½ÉÑ•¡½µÁ…É…Ñ½È¹½µÁ…É¥¹1½¹œ¡Q•ÉÉ¥Ñ½ÉåI•½Éèé¥¤¤¹Ñ½1¥ÍÐ ¤ì(€€€€€€€¥˜€¡É•½É‘Ì¹¥ÍµÁÑä ¤¤É•ÑÕÉ¸ì((€€€€€€€¥¹ÐÍÑ…ÉÐ€ô€¡¥¹Ð¤5…Ñ ¹™±½½É5½¡±•Ù•°¹•Ñ…µ•Q¥µ” ¤°É•½É‘Ì¹Í¥é” ¤¤ì(€€€€€€€¥¹Ð¡…¹•€ô€Àì(€€€€€€€¥¹Ð¡•­Ì€ô€Àì(€€€€€€€™½È€¡¥¹Ð½™™Í•Ð€ô€Àì½™™Í•Ð€ðÉ•½É‘Ì¹Í¥é” ¤€˜˜¡…¹•€ð‰±½­	Õ‘•Ð€˜˜¡•­Ì€ðµ…á¡•­Ìì½™™Í•Ð¬¬¤ì(€€€€€€€€€€€Q•ÉÉ¥Ñ½ÉåI•½ÉÉ•½É€ôÉ•½É‘Ì¹•Ð ¡ÍÑ…ÉÐ€¬½™™Í•Ð¤€”É•½É‘Ì¹Í¥é” ¤¤ì(€€€€€€€€€€€½½ÑÁÉ¥¹ÑQåÁ”ÑåÁ”€ôMÁ•¥•ÍAÉ½™¥±”¹½˜¡É•½É¹ÍÁ•¥•Ì ¤¤¹™½½ÑÁÉ¥¹ÑQåÁ” ¤ì(€€€€€€€€€€€¥¹Ð‘•Í¥É•€ôÉ•½É¹‘•Í¥É•‘½½ÑÁÉ¥¹Ð ¤ì(€€€€€€€€€€€‰½½±•…¸É½Ü€ôÉ•½É¹™½½ÑÁÉ¥¹ÑAÉ½É•ÍÌ ¤€ð‘•Í¥É•ì(€€€€€€€€€€€‰½½±•…¸‘•…ä€ôÑåÁ”€ôô½½ÑÁÉ¥¹ÑQåÁ”¹=	]€˜˜É•½É¹™½½ÑÁÉ¥¹ÑAÉ½É•ÍÌ ¤€ø‘•Í¥É•ì(€€€€€€€€€€€¥˜€ …É½Ü€˜˜€…‘•…ä¤½¹Ñ¥¹Õ”ì((€€€€€€€€€€€Ý¡¥±”€¡¡…¹•€ð‰±½­	Õ‘•Ð€˜˜¡•­Ì€ðµ…á¡•­Ì¤ì(€€€€€€€€€€€€€€€¡•­Ì¬¬ì(€€€€€€€€€€€€€€€¥¹ÐÕÉÍ½È€ôÉ•½É¹¹•áÑ½½ÑÁÉ¥¹ÑÕÉÍ½È ¤ì(€€€€€€€€€€€€€€€	±½­A½Ì…¹‘¥‘…Ñ”€ô™½½ÑÁÉ¥¹Ñ…¹‘¥‘…Ñ”¡É•½É°ÕÉÍ½È¤ì(€€€€€€€€€€€€€€€¥˜€ …±•Ù•°¹¡…Í¡Õ¹­Ð¡…¹‘¥‘…Ñ”¤¤½¹Ñ¥¹Õ”ì(€€€€€€€€€€€€€€€Q•ÉÉ¥Ñ½Éåi½¹”é½¹”€ôé½¹•½È¡É•½É°…¹‘¥‘…Ñ”¤ì(€€€€€€€€€€€€€€€¥˜€¡é½¹”€ôôQ•ÉÉ¥Ñ½Éåi½¹”¹=UQM%¤½¹Ñ¥¹Õ”ì((€€€€€€€€€€€€€€€¥˜€¡É½Ü¤ì(€€€€€€€€€€€€€€€€€€€‘½Õ‰±”¡…¹”€ôÍÝ¥Ñ €¡é½¹”¤ì(€€€€€€€€€€€€€€€€€€€€€€€…Í”=I€´ø€À¸äÁì(€€€€€€€€€€€€€€€€€€€€€€€…Í”%99H€´ø€À¸Ôáì(€€€€€€€€€€€€€€€€€€€€€€€…Í”=UQH€´ø€À¸ÈÑì(€€€€€€€€€€€€€€€€€€€€€€€…Í”=UQM%€´ø€À¸Áì(€€€€€€€€€€€€€€€€€€€ôì(€€€€€€€€€€€€€€€€€€€¥˜€¡!…Í¡9½¥Í”¹Õ¹¥Ð¡!…Í¡9½¥Í”¹½µ‰¥¹”¡É•½É¹Í•• ¤°ÕÉÍ½È°€ääÅ0¤¤€ø¡…¹”¤½¹Ñ¥¹Õ”ì(€€€€€€€€€€€€€€€€€€€¥˜€¡ÑÉåA±…•½½ÑÁÉ¥¹Ð¡±•Ù•°°É•½É°ÑåÁ”°…¹‘¥‘…Ñ”°ÕÉÍ½È¤¤ì(€€€€€€€€€€€€€€€€€€€€€€€É•½É¹…‘‘½½ÑÁÉ¥¹ÑAÉ½É•ÍÌ Ä¤ì(€€€€€€€€€€€€€€€€€€€€€€€¡…¹•¬¬ì(€€€€€€€€€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô•±Í”¥˜€¡ÑåÁ”€ôô½½ÑÁÉ¥¹ÑQåÁ”¹=	]€˜˜±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡…¹‘¥‘…Ñ”¤¹¥Ì¡	±½­Ì¹=	]¤(€€€€€€€€€€€€€€€€€€€€€€€€˜˜¹½9•…É‰åA±…å•È¡±•Ù•°°…¹‘¥‘…Ñ”°€Ü¸Á¤¤ì(€€€€€€€€€€€€€€€€€€€±•Ù•°¹Í•Ñ	±½¬¡…¹‘¥‘…Ñ”°	±½­Ì¹%H¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤°€Ì¤ì(€€€€€€€€€€€€€€€€€€€É•½É¹…‘‘½½ÑÁÉ¥¹ÑAÉ½É•ÍÌ ´Ä¤ì(€€€€€€€€€€€€€€€€€€€¡…¹•¬¬ì(€€€€€€€€€€€€€€€€€€€‰É•…¬ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€¥˜€¡¡…¹•€ø€Àñð¡•­Ì€ø€À¤‘…Ñ„¹Í•Ñ¥ÉÑä ¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸ÑÉåA±…•½½ÑÁÉ¥¹Ð¡M•ÉÙ•É1•Ù•°±•Ù•°°Q•ÉÉ¥Ñ½ÉåI•½ÉÉ•½É°½½ÑÁÉ¥¹ÑQåÁ”ÑåÁ”°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€	±½­A½ÌÉ…Ü°¥¹ÐÕÉÍ½È¤ì(€€€€€€€É•ÑÕÉ¸ÍÝ¥Ñ €¡ÑåÁ”¤ì(€€€€€€€€€€€…Í”=	]€´øÑÉåA±…•½‰Ý•ˆ¡±•Ù•°°É…Ü¤ì(€€€€€€€€€€€…Í”1=]IL€´øÑÉåA±…•±½Ý•È¡±•Ù•°°É…Ü°É•½É¹Í•• ¤°ÕÉÍ½È¤ì(€€€€€€€€€€€…Í”QI%0€´øÑÉåA±…•QÉ…¥°¡±•Ù•°°É…Ü¤ì(€€€€€€€€€€€…Í”	UII=\€´øÑÉåA±…•	ÕÉÉ½Ý5…É¬¡±•Ù•°°É…Ü¤ì(€€€€€€€€€€€…Í”5UM!I==5L€´øÑÉåA±…•5ÕÍ¡É½½´¡±•Ù•°°É…Ü°É•½É¹Í•• ¤°ÕÉÍ½È¤ì(€€€€€€€€€€€…Í”9=9€´ø™…±Í”ì(€€€€€€€ôì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ	±½­A½Ì™½½ÑÁÉ¥¹Ñ…¹‘¥‘…Ñ”¡Q•ÉÉ¥Ñ½ÉåI•½ÉÉ•½É°¥¹ÐÕÉÍ½È¤ì(€€€€€€€±½¹œ Ä€ô!…Í¡9½¥Í”¹½µ‰¥¹”¡É•½É¹Í•• ¤°ÕÉÍ½È°€ÁàÅ˜ÄÈÍ‰ˆÕ0¤ì(€€€€€€€±½¹œ È€ô!…Í¡9½¥Í”¹µ¥àØÐ¡ Äx€ÁàÕ‘••”ØÙ‘0¤ì(€€€€€€€‘½Õ‰±”…¹±”€ô!…Í¡9½¥Í”¹Õ¹¥Ð¡ Ä¤€¨5…Ñ ¹A$€¨€È¸Áì(€€€€€€€‘½Õ‰±”µ…áI…‘¥ÕÌ€ôÉ•½É¹É…‘¥ÕÍ¡Õ¹­Ì ¤€¨€ÄØ¸Á€¨€À¸àÙì(€€€€€€€‘½Õ‰±”‘¥ÍÑ…¹”€ô5…Ñ ¹ÍÅÉÐ¡!…Í¡9½¥Í”¹Õ¹¥Ð¡ È¤¤€¨µ…áI…‘¥ÕÌì(€€€€€€€¥¹Ð‘à€ô€¡¥¹Ð¤5…Ñ ¹É½Õ¹¡5…Ñ ¹½Ì¡…¹±”¤€¨‘¥ÍÑ…¹”¤ì(€€€€€€€¥¹Ð‘è€ô€¡¥¹Ð¤5…Ñ ¹É½Õ¹¡5…Ñ ¹Í¥¸¡…¹±”¤€¨‘¥ÍÑ…¹”¤ì(€€€€€€€¥¹Ð‘ä€ô!…Í¡9½¥Í”¹Í¥¹•¡ Èx€ÁàÄÈÌÐÔØÜàå…‰‘•™0°€Ü¤ì(€€€€€€€É•ÑÕÉ¸É•½É¹½É” ¤¹½™™Í•Ð¡‘à°‘ä°‘è¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ	±½­A½Ì™¥¹‘MÕÉ™…”¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½Ì…É½Õ¹¤ì(€€€€€€€™½È€¡¥¹Ð€ô€Àì€ðô€àì¬¬¤ì(€€€€€€€€€€€¥¹ÑmtåÌ€ô€ôô€À€ü¹•Ü¥¹Ñmuí…É½Õ¹¹•Ñd ¥ô€è¹•Ü¥¹Ñmuí…É½Õ¹¹•Ñd ¤€¬°…É½Õ¹¹•Ñd ¤€´‘ôì(€€€€€€€€€€€™½È€¡¥¹Ðä€èåÌ¤ì(€€€€€€€€€€€€€€€	±½­A½ÌÉ½Õ¹€ô¹•Ü	±½­A½Ì¡…É½Õ¹¹•Ñ` ¤°ä°…É½Õ¹¹•Ñh ¤¤ì(€€€€€€€€€€€€€€€¥˜€ …±•Ù•°¹¡…Í¡Õ¹­Ð¡É½Õ¹¤¤½¹Ñ¥¹Õ”ì(€€€€€€€€€€€€€€€	±½­MÑ…Ñ”ÍÑ…Ñ”€ô±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡É½Õ¹¤ì(€€€€€€€€€€€€€€€¥˜€ …ÍÑ…Ñ”¹¥Í¥È ¤€˜˜±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡É½Õ¹¹…‰½Ù” ¤¤¹¥Í¥È ¤¤É•ÑÕÉ¸É½Õ¹ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€É•ÑÕÉ¸¹Õ±°ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸ÑÉåA±…•±½Ý•È¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½ÌÉ…Ü°±½¹œÍ••°¥¹ÐÕÉÍ½È¤ì(€€€€€€€	±½­A½ÌÉ½Õ¹€ô™¥¹‘MÕÉ™…”¡±•Ù•°°É…Ü¤ì(€€€€€€€¥˜€¡É½Õ¹€ôô¹Õ±°ñð€…¹½9•…É‰åA±…å•È¡±•Ù•°°É½Õ¹°€ä¸Á¤ñð±•Ù•°¹•Ñ	±½­¹Ñ¥Ñä¡É½Õ¹¤€„ô¹Õ±°¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€	±½­MÑ…Ñ”Í½¥°€ô±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡É½Õ¹¤ì(€€€€€€€¥˜€ „¡Í½¥°¹¥Ì¡	±½­Ì¹IMM}	1=,¤ñðÍ½¥°¹¥Ì¡	±½­Ì¹%IP¤ñðÍ½¥°¹¥Ì¡	±½­Ì¹A=i=0¤¤¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€	±½­A½ÌÁ½Ì€ôÉ½Õ¹¹…‰½Ù” ¤ì(€€€€€€€	±½­MÑ…Ñ”™±½Ý•È€ôÍÝ¥Ñ €¡!…Í¡9½¥Í”¹‰½Õ¹‘•¡!…Í¡9½¥Í”¹½µ‰¥¹”¡Í••°ÕÉÍ½È°€Áá…‰ŒÄÅ0¤°€Ð¤¤ì(€€€€€€€€€€€…Í”€À€´ø	±½­Ì¹91%=8¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤ì(€€€€€€€€€€€…Í”€Ä€´ø	±½­Ì¹A=AAd¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤ì(€€€€€€€€€€€…Í”€È€´ø	±½­Ì¹iUI}	1UP¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤ì(€€€€€€€€€€€‘•™…Õ±Ð€´ø	±½­Ì¹=ae}%Md¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤ì(€€€€€€€ôì(€€€€€€€É•ÑÕÉ¸±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡Á½Ì¤¹¥Í¥È ¤€˜˜™±½Ý•È¹…¹MÕÉÙ¥Ù”¡±•Ù•°°Á½Ì¤€˜˜±•Ù•°¹Í•Ñ	±½¬¡Á½Ì°™±½Ý•È°€Ì¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸ÑÉåA±…•QÉ…¥°¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½ÌÉ…Ü¤ì(€€€€€€€	±½­A½ÌÉ½Õ¹€ô™¥¹‘MÕÉ™…”¡±•Ù•°°É…Ü¤ì(€€€€€€€¥˜€¡É½Õ¹€ôô¹Õ±°ñð€…¹½9•…É‰åA±…å•È¡±•Ù•°°É½Õ¹°€ÄÀ¸Á¤ñð±•Ù•°¹•Ñ	±½­¹Ñ¥Ñä¡É½Õ¹¤€„ô¹Õ±°¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€	±½­MÑ…Ñ”ÍÑ…Ñ”€ô±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡É½Õ¹¤ì(€€€€€€€¥˜€ …ÍÑ…Ñ”¹¥Ì¡	±½­Ì¹IMM}	1=,¤¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€É•ÑÕÉ¸±•Ù•°¹Í•Ñ	±½¬¡É½Õ¹°	±½­Ì¹=IM}%IP¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤°€Ì¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸ÑÉåA±…•	ÕÉÉ½Ý5…É¬¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½ÌÉ…Ü¤ì(€€€€€€€	±½­A½ÌÉ½Õ¹€ô™¥¹‘MÕÉ™…”¡±•Ù•°°É…Ü¤ì(€€€€€€€¥˜€¡É½Õ¹€ôô¹Õ±°ñð€…¹½9•…É‰åA±…å•È¡±•Ù•°°É½Õ¹°€ÄÀ¸Á¤ñð±•Ù•°¹•Ñ	±½­¹Ñ¥Ñä¡É½Õ¹¤€„ô¹Õ±°¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€	±½­MÑ…Ñ”ÍÑ…Ñ”€ô±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡É½Õ¹¤ì(€€€€€€€¥˜€ „¡ÍÑ…Ñ”¹¥Ì¡	±½­Ì¹IMM}	1=,¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹%IP¤¤¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€€¼¼Y¥ÍÕ…°Í¥¸½¹±äè¹•Ù•È½Á•¹Ì„¡½±”°Í¼Ñ•ÉÉ…¥¸½Á…Ñ¡™¥¹‘¥¹œ…¹¹½Ð‰”‰É½­•¸‰äÑ¡”™½½ÑÁÉ¥¹ÐÍåÍÑ•´¸(€€€€€€€É•ÑÕÉ¸±•Ù•°¹Í•Ñ	±½¬¡É½Õ¹°	±½­Ì¹=IM}%IP¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤°€Ì¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸ÑÉåA±…•5ÕÍ¡É½½´¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½ÌÉ…Ü°±½¹œÍ••°¥¹ÐÕÉÍ½È¤ì(€€€€€€€	±½­A½ÌÉ½Õ¹€ô™¥¹‘MÕÉ™…”¡±•Ù•°°É…Ü¤ì(€€€€€€€¥˜€¡É½Õ¹€ôô¹Õ±°ñð€…¹½9•…É‰åA±…å•È¡±•Ù•°°É½Õ¹°€ä¸Á¤ñð±•Ù•°¹•Ñ	±½­¹Ñ¥Ñä¡É½Õ¹¤€„ô¹Õ±°¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€	±½­MÑ…Ñ”Í½¥°€ô±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡É½Õ¹¤ì(€€€€€€€¥˜€ „¡Í½¥°¹¥Ì¡	±½­Ì¹5e1%U4¤ñðÍ½¥°¹¥Ì¡	±½­Ì¹IMM}	1=,¤ñðÍ½¥°¹¥Ì¡	±½­Ì¹%IP¤ñðÍ½¥°¹¥Ì¡	±½­Ì¹A=i=0¤¤¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€	±½­A½ÌÁ½Ì€ôÉ½Õ¹¹…‰½Ù” ¤ì(€€€€€€€	±½­MÑ…Ñ”µÕÍ¡É½½´€ô!…Í¡9½¥Í”¹‰½Õ¹‘•¡!…Í¡9½¥Í”¹½µ‰¥¹”¡Í••°ÕÉÍ½È°€ÁàääÄÅ0¤°€È¤€ôô€À(€€€€€€€€€€€€€€€€ü	±½­Ì¹I}5UM!I==4¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤€è	±½­Ì¹	I=]9}5UM!I==4¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤ì(€€€€€€€É•ÑÕÉ¸±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡Á½Ì¤¹¥Í¥È ¤€˜˜µÕÍ¡É½½´¹…¹MÕÉÙ¥Ù”¡±•Ù•°°Á½Ì¤€˜˜±•Ù•°¹Í•Ñ	±½¬¡Á½Ì°µÕÍ¡É½½´°€Ì¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸¹½9•…É‰åA±…å•È¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½ÌÁ½Ì°‘½Õ‰±”É…‘¥ÕÌ¤ì(€€€€€€€É•ÑÕÉ¸±•Ù•°¹•Ñ9•…É•ÍÑA±…å•È¡Á½Ì¹•Ñ` ¤€¬€À¸Õ°Á½Ì¹•Ñd ¤€¬€À¸Õ°Á½Ì¹•Ñh ¤€¬€À¸Õ°É…‘¥ÕÌ°™…±Í”¤€ôô¹Õ±°ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸ÑÉåA±…•½‰Ý•ˆ¡M•ÉÙ•É1•Ù•°±•Ù•°°	±½­A½ÌÁ½Ì¤ì(€€€€€€€¥˜€ …±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡Á½Ì¤¹¥Í¥È ¤¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€¥˜€¡±•Ù•°¹…¹M••M­ä¡Á½Ì¤¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€¥˜€ …¹½9•…É‰åA±…å•È¡±•Ù•°°Á½Ì°€Ü¸Á¤¤É•ÑÕÉ¸™…±Í”ì((€€€€€€€‰½½±•…¸¹…ÑÕÉ…±MÕÁÁ½ÉÐ€ô™…±Í”ì(€€€€€€€™½È€¡¥É•Ñ¥½¸‘¥É•Ñ¥½¸€è¥É•Ñ¥½¸¹Ù…±Õ•Ì ¤¤ì(€€€€€€€€€€€	±½­A½ÌÍÕÁÁ½ÉÑA½Ì€ôÁ½Ì¹É•±…Ñ¥Ù”¡‘¥É•Ñ¥½¸¤ì(€€€€€€€€€€€	±½­MÑ…Ñ”ÍÕÁÁ½ÉÐ€ô±•Ù•°¹•Ñ	±½­MÑ…Ñ”¡ÍÕÁÁ½ÉÑA½Ì¤ì(€€€€€€€€€€€¥˜€¡±•Ù•°¹•Ñ	±½­¹Ñ¥Ñä¡ÍÕÁÁ½ÉÑA½Ì¤€„ô¹Õ±°¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€€€€€¥˜€¡¥Í9…ÑÕÉ…±MÕÁÁ½ÉÐ¡ÍÕÁÁ½ÉÐ¤(€€€€€€€€€€€€€€€€€€€€˜˜ÍÕÁÁ½ÉÐ¹¥Í…•MÑÕÉ‘ä¡±•Ù•°°ÍÕÁÁ½ÉÑA½Ì°‘¥É•Ñ¥½¸¹•Ñ=ÁÁ½Í¥Ñ” ¤¤¤ì(€€€€€€€€€€€€€€€¹…ÑÕÉ…±MÕÁÁ½ÉÐ€ôÑÉÕ”ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€¥˜€ …¹…ÑÕÉ…±MÕÁÁ½ÉÐ¤É•ÑÕÉ¸™…±Í”ì(€€€€€€€É•ÑÕÉ¸±•Ù•°¹Í•Ñ	±½¬¡Á½Ì°	±½­Ì¹=	]¹‘•™…Õ±Ñ	±½­MÑ…Ñ” ¤°€Ì¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸¥Í9…ÑÕÉ…±MÕÁÁ½ÉÐ¡	±½­MÑ…Ñ”ÍÑ…Ñ”¤ì(€€€€€€€É•ÑÕÉ¸ÍÑ…Ñ”¹¥Ì¡	±½­Ì¹MQ=9¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹AM1Q¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹QU¤(€€€€€€€€€€€€€€€ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹I9%Q¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹%=I%Q¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹9M%Q¤(€€€€€€€€€€€€€€€ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹%IP¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹IMM}	1=,¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹A=i=0¤(€€€€€€€€€€€€€€€ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹=-}1=¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹MAIU}1=¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹	%I!}1=¤(€€€€€€€€€€€€€€€ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹)U91}1=¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹%}1=¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹I-}=-}1=¤(€€€€€€€€€€€€€€€ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹59I=Y}1=¤ñðÍÑ…Ñ”¹¥Ì¡	±½­Ì¹!IIe}1=¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‰½½±•…¸¥ÍA±…å•É	½Õ¹¡5½ˆµ½ˆ¤ì(€€€€€€€¥˜€¡µ½ˆ¥¹ÍÑ…¹•½˜Q…µ…‰±•¹¥µ…°Ñ…µ”€˜˜Ñ…µ”¹¥ÍQ…µ” ¤¤É•ÑÕÉ¸ÑÉÕ”ì(€€€€€€€É•ÑÕÉ¸µ½ˆ¥¹ÍÑ…¹•½˜‰ÍÑÉ…Ñ!½ÉÍ”¡½ÉÍ”€˜˜¡½ÉÍ”¹¥ÍQ…µ• ¤ì(€€€ô((€€€ÁÕ‰±¥ŒÍÑ…Ñ¥ŒÙ½¥Í•ÑM¥µÕ±…Ñ¥½¹M…±”¡M•ÉÙ•É1•Ù•°±•Ù•°°‘½Õ‰±”Í…±”¤ì(€€€€€€€±½¹œ¹½Ü€ô±•Ù•°¹•Ñ…µ•Q¥µ” ¤ì(€€€€€€€€¼¼I•‰…Í”…±°…‰ÍÑÉ…Ð±½­Ì‰•™½É”¡…¹¥¹œÍ…±”Í¼Ñ¡”¹•ÜµÕ±Ñ¥Á±¥•È¥Ì¹•Ù•ÈÉ•ÑÉ½…Ñ¥Ù”¸(€€€€€€€¹Ù¥É½¹µ•¹ÑM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤¹É•‰…Í”¡¹½Ü¤ì(€€€€€€€Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤¹Í•ÑM¥µÕ±…Ñ¥½¹M…±”¡Í…±”°¹½Ü¤ì(€€€ô((€€€ÁÕ‰±¥ŒÍÑ…Ñ¥Œ‘½Õ‰±”Í¥µÕ±…Ñ¥½¹M…±”¡M•ÉÙ•É1•Ù•°±•Ù•°¤ì(€€€€€€€É•ÑÕÉ¸Q•ÉÉ¥Ñ½ÉåM…Ù•‘…Ñ„¹•Ð¡±•Ù•°¤¹Í¥µÕ±…Ñ¥½¹M…±” ¤ì(€€€ô((€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ‘½Õ‰±”ÍÅÈ¡‘½Õ‰±”Ù…±Õ”¤ìÉ•ÑÕÉ¸Ù…±Õ”€¨Ù…±Õ”ìô)ô

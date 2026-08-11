@@ -135,7 +135,9 @@ public final class CommonForgeEvents {
     private static void propagateLocalAlarm(Mob victim, LivingEntity attacker, ServerLevel level, SpeciesProfile profile) {
         int social = MobMindData.getAttribute(victim, AttributeType.SOCIABILITY);
         double radius = 6.0D + social * 0.12D;
+        int inspected = 0;
         for (Mob ally : BehaviorUtil.nearbySameSpecies(victim, level, radius)) {
+            if (inspected++ >= 12) break;
             MobMindData.initialize(ally, level);
             if (!ally.hasLineOfSight(victim) && ally.distanceToSqr(victim) > 36.0D) continue;
             MobMindData.rememberThreat(ally, attacker, Math.max(4, social / 8), level);
