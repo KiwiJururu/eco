@@ -11,6 +11,7 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.animal.camel.Camel;
+import net.minecraft.world.entity.monster.hoglin.Hoglin;
 import net.minecraft.world.phys.AABB;
 
 import java.util.HashSet;
@@ -110,6 +111,9 @@ public final class ReproductionManager {
         if (animal instanceof TamableAnimal tame && tame.isTame()) return false;
         // Camel overrides isTamed() to always return true because it has no taming/owner phase.
         if (animal instanceof AbstractHorse horse && !(horse instanceof Camel) && horse.isTamed()) return false;
+        // Hoglin disables vanilla love while pacified by a nearby repellent. Calling setInLove
+        // directly without this species gate would bypass that vanilla Brain restriction.
+        if (animal instanceof Hoglin hoglin && !hoglin.canFallInLove()) return false;
         return MobMindData.supports(animal);
     }
 }
