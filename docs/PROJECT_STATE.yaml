@@ -9,7 +9,7 @@ branches:
   release: main
   stable_development: development/stable
   legacy_stable_alias: development/qa-0.1.0
-  current_infrastructure_work: infrastructure/autonomous-dev-0.2.0
+  active_work: null
 
 validated_baseline:
   commit: d1903a31d608991d0453ed45571cfb6950964e6c
@@ -20,6 +20,17 @@ validated_baseline:
   forge_gametest_count: 11
   build: PASS
   jar_artifact: PASS
+
+infrastructure:
+  external_project_memory: true
+  canonical_design_document: true
+  species_status_matrix: true
+  issue_driven_backlog: true
+  permanent_stable_branch: development/stable
+  deduplicated_pr_ci: true
+  cancel_obsolete_ci_runs: true
+  nightly_stable_regression: true
+  nightly_failure_issue_reporting: true
 
 catalogue:
   supported_species: 79
@@ -42,10 +53,10 @@ validated_features:
   - behavior-family representative smoke test
 
 current_priority:
-  phase: infrastructure
-  goal: externalize project memory and make development faster/autonomous
-  active_gameplay_issue_after_infrastructure: 7
-  active_gameplay_batch: aquatic_schools_and_amphibious_ecology
+  phase: gameplay
+  active_issue: 7
+  active_batch: aquatic_schools_and_amphibious_ecology
+  instruction: complete_issue_before_advancing
 
 backlog_issues:
   aquatic: 7
