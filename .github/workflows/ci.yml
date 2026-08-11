@@ -24,9 +24,9 @@ jobs:
 
       - name: Apply development source overlay
         run: |
-          if [ -f ../.qa/living_overlay.tgz ]; then
-            tar -xzf ../.qa/living_overlay.tgz -C .
-          fi
+          cat ../.qa/overlay.b64.* | tr -d '\n\r' | base64 -d > /tmp/living_overlay.tgz
+          gzip -t /tmp/living_overlay.tgz
+          tar -xzf /tmp/living_overlay.tgz -C .
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
