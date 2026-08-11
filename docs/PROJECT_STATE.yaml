@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: 5c13de68421321ed8cc55f20c10acdc051da1d3a
-  version: 0.2.5-development
+  gameplay_source_commit: dbd85b9a85240f164b796f394a651929b0c782c0
+  version: 0.2.6-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 41
+  forge_gametest_count: 49
   build: PASS
   jar_artifact: PASS
 
@@ -78,6 +78,15 @@ validated_features:
   - Zombified Piglin persistent anger and alert ownership preservation
   - daylight/fire/equipment ownership retained for Skeleton and Stray
   - state-gated melee navigation recovery without ranged-path takeover
+  - special hostile/Nether per-species vanilla AI ownership policies
+  - observation-only overlays for fuse, jump, special flight and Brain movement controllers
+  - Creeper fuse/swell and Slime/Magma Cube size/squish/jump preservation
+  - Blaze/Ghast/Phantom/Vex charge, anchor, owner and native-flight preservation
+  - Hoglin/Zoglin Brain lifecycle and grouped territory preservation
+  - Strider lava/cold/saddle/rider/boost movement preservation
+  - LAND/AIR/LAVA environmental domain validation
+  - Hoglin repellent pacification honored by ecological reproduction
+  - Hoglin and Strider vanilla-love/capacity integration
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -87,8 +96,8 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 12
-  active_batch: common_hostile_nether
+  active_issue: 13
+  active_batch: end_cave_special
   instruction: complete_issue_before_advancing
 
 completed_issues:
@@ -97,9 +106,9 @@ completed_issues:
   common_passive_land: 9
   terrestrial_predators: 10
   skeleton_undead_combat: 11
+  common_hostile_nether: 12
 
 backlog_issues:
-  common_hostile_nether: 12
   end_cave_special: 13
   villages_golems: 14
   piglin_society: 15
