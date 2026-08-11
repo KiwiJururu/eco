@@ -37,6 +37,11 @@ public final class AdaptiveAiManager {
                 SpeciesType species = SpeciesType.from(mob).orElse(null);
                 if (species == null) continue;
                 SpeciesProfile profile = SpeciesProfile.of(species);
+
+                // Short local communication pass before the species controller. This lets passive herd
+                // animals react to information from visible nearby groupmates without a global shared brain.
+                SocialAlarmBehavior.tick(mob, level, profile);
+
                 if (profile.formsPersistentTerritory(MobMindData.isBoss(mob))) {
                     TerritoryManager.ensureTerritory(mob, level);
                     if (MobMindData.isBoss(mob)) TerritoryManager.boostBossTerritory(mob, level);
