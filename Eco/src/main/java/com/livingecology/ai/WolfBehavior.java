@@ -171,7 +171,12 @@ public final class WolfBehavior {
         if (canRest) wolf.getNavigation().stop();
     }
 
-    private static boolean orderPatrol(Wolf wolf, ServerLevel level, TerritoryRecord territory) {
+    /**
+     * Issues one concrete patrol order using territorial sampling first and a local reachable fallback second.
+     * Public so the GameTest suite can validate patrol path issuance without interference from higher-priority
+     * combat, pack-cohesion or border behaviors running in adjacent GameTest arenas.
+     */
+    public static boolean orderPatrol(Wolf wolf, ServerLevel level, TerritoryRecord territory) {
         Vec3 center = territory == null ? wolf.position() : Vec3.atCenterOf(territory.core());
         double radius = territory == null ? 12.0D : Math.min(30.0D, territory.radiusChunks() * 16.0D * 0.55D);
         Optional<Vec3> patrol = BehaviorUtil.safePatrolPoint(wolf, level, center, radius);
