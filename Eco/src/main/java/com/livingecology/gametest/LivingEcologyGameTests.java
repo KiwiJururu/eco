@@ -122,6 +122,9 @@ public final class LivingEcologyGameTests {
         ServerLevel level = helper.getLevel();
         Wolf wolf = spawn(helper, EntityType.WOLF, 4, 1, 4);
         MobMindData.initialize(wolf, level);
+        // EntityType#create + addFreshEntity happens before the entity's first physics tick in a GameTest.
+        // GroundPathNavigation requires the mob to be grounded, so settle the test wolf on the known stone floor.
+        wolf.setOnGround(true);
 
         BlockPos center = helper.absolutePos(new BlockPos(4, 1, 4));
         TerritoryRecord territory = new TerritoryRecord(900001L, SpeciesType.WOLF, center, center,
