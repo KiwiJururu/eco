@@ -166,3 +166,30 @@ Validated gameplay commit: `13d45b9b4f8f846cf0c9ee7964d72037c4c5436b`
 - build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
 - no new textures/assets required; human stalking, retreat and overlap pacing QA remains PENDING
 - next planned gameplay batch: issue #11, skeleton and undead combat families
+
+## Skeleton and undead combat ecology 0.2.5
+
+Validated gameplay commit: `5c13de68421321ed8cc55f20c10acdc051da1d3a`
+
+- completed issue #11 scope for Skeleton, Stray, Wither Skeleton and Zombified Piglin
+- added an explicit per-species vanilla ownership policy and
+  `docs/UNDEAD_COMBAT_AI_AUDIT.md`
+- removed the batch from generic hostile navigation and rivalry targeting so ecology cannot
+  replace working bow strafe, melee pursuit, neutral anger or vanilla target repertoires
+- preserved weapon-aware Skeleton/Stray ranged positioning and daylight/fire/equipment ownership
+- retained Wither Skeleton versus Piglin `WARLIKE` context without turning the relation matrix
+  into a target selector
+- preserved Zombified Piglin persistent anger target/time and vanilla alert acquisition
+- shared perceived combat memory within bounded local knowledge groups, with at most eight
+  receivers per pass and no target assignment
+- limited melee path recovery to grounded, unmounted, unleashed actors with distant valid targets
+  whose navigation is finished or demonstrably stalled
+- kept Skeleton/Stray mobile and non-persistent while retaining Nether structure/horde territory
+  semantics for Wither Skeleton and Zombified Piglin
+- compileJava PASS on Java 17
+- JUnit PASS (43/43)
+- Forge GameTests PASS (41/41)
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human bow-strafe, melee pursuit and group-response pacing QA
+  remains PENDING
+- next planned gameplay batch: issue #12, common hostile and Nether species

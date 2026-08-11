@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: 13d45b9b4f8f846cf0c9ee7964d72037c4c5436b
-  version: 0.2.4-development
+  gameplay_source_commit: 5c13de68421321ed8cc55f20c10acdc051da1d3a
+  version: 0.2.5-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 36
+  forge_gametest_count: 41
   build: PASS
   jar_artifact: PASS
 
@@ -71,6 +71,13 @@ validated_features:
   - Panda gene and atomic sit/eat/sneeze/roll state preservation
   - bounded safe retreat fallback for confined loaded terrain
   - bordered predator overlap with acquired rivalry but no forced targets
+  - skeleton/undead-combat per-species vanilla AI ownership policies
+  - Skeleton and Stray weapon-aware bow/melee positioning preservation
+  - local bounded skeleton-family and Zombified Piglin combat memory
+  - Wither Skeleton versus Piglin rivalry retained without forced targets
+  - Zombified Piglin persistent anger and alert ownership preservation
+  - daylight/fire/equipment ownership retained for Skeleton and Stray
+  - state-gated melee navigation recovery without ranged-path takeover
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -80,8 +87,8 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 11
-  active_batch: skeleton_undead_combat
+  active_issue: 12
+  active_batch: common_hostile_nether
   instruction: complete_issue_before_advancing
 
 completed_issues:
@@ -89,9 +96,9 @@ completed_issues:
   flying_passive_colony: 8
   common_passive_land: 9
   terrestrial_predators: 10
+  skeleton_undead_combat: 11
 
 backlog_issues:
-  skeleton_undead_combat: 11
   common_hostile_nether: 12
   end_cave_special: 13
   villages_golems: 14
