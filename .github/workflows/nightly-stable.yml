@@ -12,6 +12,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   full-regression:
@@ -40,8 +41,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Record tested commit
-        run: git rev-parse HEAD
-        working-directory: .
+        run: echo "STABLE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Compile main sources
         run: ./gradlew compileJava --stacktrace
@@ -66,6 +66,32 @@ jobs:
             Eco/run/crash-reports/**
           if-no-files-found: ignore
           retention-days: 30
+
+      - name: Open or update nightly failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'Nightly regression failure in:title' --json number --jq '.[0].number // empty')"
+          body="Nightly full regression failed for development/stable commit ${STABLE_SHA}. Run: ${RUN_URL}. Failure logs were uploaded as a workflow artifact. Do not advance the active gameplay family until this regression is understood."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Nightly regression failure" --body "$body"
+          fi
+
+      - name: Resolve previous nightly failure issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'Nightly regression failure in:title' --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "Nightly regression is green again on development/stable commit ${STABLE_SHA}. Run: ${RUN_URL}."
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" --reason completed
+          fi
 
       - name: Upload nightly JAR
         if: success()
