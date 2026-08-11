@@ -12,7 +12,8 @@ branches:
   active_work: null
 
 validated_baseline:
-  commit: d1903a31d608991d0453ed45571cfb6950964e6c
+  ref: development/stable
+  gameplay_source_commit: d1903a31d608991d0453ed45571cfb6950964e6c
   version: 0.1.x-development
   compileJava: PASS
   junit: PASS
