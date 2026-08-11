@@ -17,6 +17,12 @@ import java.util.List;
 import java.util.Optional;
 
 public final class WolfBehavior {
+    private static final int[][] LOCAL_PATROL_DIRECTIONS = {
+            {1, 0}, {0, 1}, {-1, 0}, {0, -1},
+            {1, 1}, {-1, 1}, {-1, -1}, {1, -1}
+    };
+    private static final int[] LOCAL_PATROL_DISTANCES = {4, 6, 8, 3};
+
     private WolfBehavior() {}
 
     public static void tick(Mob raw, ServerLevel level) {
@@ -142,15 +148,10 @@ public final class WolfBehavior {
             }
         }
 
-        // Explicit territorial patrol. This was missing in 0.0.1, leaving wild wolves almost entirely at the
-        // mercy of vanilla idle goals unless something entered their territory.
+        // Explicit territorial patrol. Random territorial sampling gives natural routes, while the local
+        // fallback prevents a due patrol from being lost just because the sampled point is unreachable.
         if (wolf.getNavigation().isDone() && MobMindData.patrolDue(wolf, level)) {
-            Vec3 center = territory == null ? wolf.position() : Vec3.atCenterOf(territory.core());
-            double radius = territory == null ? 12.0D : Math.min(30.0D, territory.radiusChunks() * 16.0D * 0.55D);
-            Optional<Vec3> patrol = BehaviorUtil.safePatrolPoint(wolf, level, center, radius);
-            if (patrol.isPresent()) {
-                Vec3 p = patrol.get();
-                wolf.getNavigation().moveTo(p.x, p.y, p.z, 0.95D);
+            if (orderPatrol(wolf, level, territory)) {
                 MobMindData.setResting(wolf, false);
                 MobMindData.scheduleNextPatrol(wolf, level, 100, 220);
                 return;
@@ -168,6 +169,37 @@ public final class WolfBehavior {
                 && context.ownZone() != TerritoryZone.OUTSIDE;
         MobMindData.setResting(wolf, canRest);
         if (canRest) wolf.getNavigation().stop();
+    }
+
+    private static boolean orderPatrol(Wolf wolf, ServerLevel level, TerritoryRecord territory) {
+        Vec3 center = territory == null ? wolf.position() : Vec3.atCenterOf(territory.core());
+        double radius = territory == null ? 12.0D : Math.min(30.0D, territory.radiusChunks() * 16.0D * 0.55D);
+        Optional<Vec3> patrol = BehaviorUtil.safePatrolPoint(wolf, level, center, radius);
+        if (patrol.isPresent()) {
+            Vec3 p = patrol.get();
+            wolf.getNavigation().moveTo(p.x, p.y, p.z, 0.95D);
+            if (!wolf.getNavigation().isDone()) return true;
+        }
+
+        // Compact arenas, caves and fragmented terrain can make a broad territorial sample unreachable.
+        // Search locally without loading chunks and only accept orders vanilla pathfinding actually keeps.
+        BlockPos origin = wolf.blockPosition();
+        int directionStart = Math.floorMod(wolf.getId(), LOCAL_PATROL_DIRECTIONS.length);
+        int[] yOffsets = {0, 1, -1, 2, -2};
+        for (int distance : LOCAL_PATROL_DISTANCES) {
+            for (int i = 0; i < LOCAL_PATROL_DIRECTIONS.length; i++) {
+                int[] direction = LOCAL_PATROL_DIRECTIONS[(directionStart + i) % LOCAL_PATROL_DIRECTIONS.length];
+                int x = origin.getX() + direction[0] * distance;
+                int z = origin.getZ() + direction[1] * distance;
+                for (int yOffset : yOffsets) {
+                    BlockPos candidate = new BlockPos(x, origin.getY() + yOffset, z);
+                    if (!level.hasChunkAt(candidate) || !BehaviorUtil.isSafeLand(level, candidate)) continue;
+                    wolf.getNavigation().moveTo(candidate.getX() + 0.5D, candidate.getY(), candidate.getZ() + 0.5D, 0.95D);
+                    if (!wolf.getNavigation().isDone()) return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static boolean isZombieFamily(SpeciesType type) {
