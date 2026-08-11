@@ -54,6 +54,7 @@ public final class AdaptiveAiManager {
                     case ZOMBIE, ZOMBIE_VILLAGER, HUSK, DROWNED -> ZombieBehavior.tick(mob, level);
                     case COD, SALMON, TROPICAL_FISH, PUFFERFISH, SQUID, GLOW_SQUID, DOLPHIN,
                             AXOLOTL, TURTLE, TADPOLE, FROG -> AquaticBehavior.tick(mob, level);
+                    case BAT, PARROT, ALLAY, BEE -> FlyingColonyBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }

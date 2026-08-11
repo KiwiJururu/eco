@@ -89,3 +89,28 @@ Validated gameplay commit: `11facda3771d425104610e888ac1e62e3d5dd1c6`
 - build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
 - no new textures/assets required; human naturalness, density and pacing QA remains PENDING
 - next planned gameplay batch: issue #8, flying passive/colony species
+
+## Flying passive and colony ecology 0.2.2
+
+Validated gameplay commit: `5a1dff521b2dbff993a62e3ec2e273005519008e`
+
+- completed issue #8 scope for Bat, Parrot, Allay and Bee
+- added an explicit per-species vanilla ownership policy and `docs/FLYING_COLONY_AI_AUDIT.md`
+- preserved Bat custom flight/hanging without issuing path-navigation orders
+- limited Parrot cohesion and perceived-threat escape to wild, active-period, idle-navigation cases;
+  tame owner/sit/shoulder/jukebox semantics remain vanilla-owned
+- kept Allay item pickup/delivery, liked player/note block, dancing, duplication and Brain movement
+  observation-only
+- anchored Bee territory center/core to a loaded valid hive within a 48-block bound and reindexed
+  persistence without loading chunks
+- shared Bee threat memory with at most 12 local same-territory receivers while leaving vanilla
+  anger/target selection authoritative
+- bounded immediate same-species hurt-alarm inspection to 12 entities
+- corrected two GameTest fixture assumptions: ownership is persisted by UUID rather than mock-player
+  identity, and territory members use the normal join path when SavedData survives a prior run
+- compileJava PASS on Java 17
+- JUnit PASS (25/25)
+- Forge GameTests PASS (22/22)
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human flight naturalness, colony density and pacing QA remains PENDING
+- next planned gameplay batch: issue #9, common passive land species

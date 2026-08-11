@@ -9,12 +9,13 @@ import com.livingecology.data.StateType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.TamableAnimal;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Local social warning for passive herds and explicitly audited social aquatic species.
+ * Local social warning for passive herds and explicitly audited aquatic/flying species.
  *
  * This is deliberately not a global group brain: the receiver must be close enough to perceive a
  * same-species groupmate, and the reported threat must still be within a plausible extended
@@ -28,7 +29,10 @@ public final class SocialAlarmBehavior {
         boolean passiveHerd = profile.behaviorFamily() == BehaviorFamily.PASSIVE_HERD;
         boolean auditedAquatic = AquaticSpeciesPolicy.of(profile.species())
                 .map(AquaticSpeciesPolicy::acceptsSocialAlarm).orElse(false);
-        if (!passiveHerd && !auditedAquatic) return;
+        boolean auditedFlying = FlyingColonySpeciesPolicy.of(profile.species())
+                .map(FlyingColonySpeciesPolicy::acceptsSocialAlarm).orElse(false);
+        if (!passiveHerd && !auditedAquatic && !auditedFlying) return;
+        if (mob instanceof TamableAnimal tame && tame.isTame()) return;
         if (MobMindData.resolveThreat(mob, level).isPresent()) return;
 
         int social = MobMindData.getAttribute(mob, AttributeType.SOCIABILITY);

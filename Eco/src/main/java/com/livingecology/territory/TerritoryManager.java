@@ -406,6 +406,25 @@ public final class TerritoryManager {
         }
     }
 
+    /**
+     * Moves a territory's persisted center/core to a loaded, nearby ecological anchor.
+     * Callers validate the anchor type (for example a Bee hive); this method supplies the shared
+     * no-forced-chunk, bounded-distance and spatial-index invariants.
+     */
+    public static boolean recenterOnLoadedCore(TerritoryRecord territory, ServerLevel level,
+                                               BlockPos anchor, double maxDistance) {
+        if (territory == null || anchor == null || !level.hasChunkAt(anchor)) return false;
+        double boundedDistance = Mth.clamp(maxDistance, 1.0D, 64.0D);
+        if (territory.center().distSqr(anchor) > boundedDistance * boundedDistance) return false;
+        if (territory.center().equals(anchor) && territory.core().equals(anchor)) return true;
+
+        BlockPos oldCenter = territory.center();
+        territory.setCenter(anchor);
+        territory.setCore(anchor);
+        TerritorySavedData.get(level).reindex(territory, oldCenter);
+        return true;
+    }
+
     public static void onCobwebBroken(ServerLevel level, BlockPos pos) {
         TerritorySavedData data = TerritorySavedData.get(level);
         TerritoryRecord spider = data.near(pos).stream()
