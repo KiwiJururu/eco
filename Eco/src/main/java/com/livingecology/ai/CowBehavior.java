@@ -2,6 +2,7 @@ package com.livingecology.ai;
 
 import com.livingecology.data.AttributeType;
 import com.livingecology.data.MobMindData;
+import com.livingecology.data.SpeciesType;
 import com.livingecology.data.StateType;
 import com.livingecology.environment.EnvironmentManager;
 import com.livingecology.environment.EnvironmentSnapshot;
@@ -20,11 +21,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/** Shared bovine controller for Cow and vanilla Cow subclasses such as Mooshroom. */
 public final class CowBehavior {
     private CowBehavior() {}
 
     public static void tick(Mob raw, ServerLevel level) {
         if (!(raw instanceof Cow cow)) return;
+        SpeciesType species = SpeciesType.from(cow).orElse(SpeciesType.COW);
         TerritoryRecord territory = TerritoryManager.ensureTerritory(cow, level);
         TerritoryContext context = TerritoryManager.contextForMob(cow, level);
         int social = MobMindData.getAttribute(cow, AttributeType.SOCIABILITY);
@@ -71,7 +74,7 @@ public final class CowBehavior {
 
         if (cow.isBaby()) {
             Cow adult = level.getEntitiesOfClass(Cow.class, cow.getBoundingBox().inflate(12.0D),
-                            other -> other != cow && other.isAlive() && !other.isBaby()).stream()
+                            other -> other != cow && other.isAlive() && !other.isBaby() && species.matches(other)).stream()
                     .min((a, b) -> Double.compare(cow.distanceToSqr(a), cow.distanceToSqr(b))).orElse(null);
             if (adult != null && cow.distanceToSqr(adult) > 16.0D) {
                 cow.getNavigation().moveTo(adult, 1.05D);
@@ -95,7 +98,7 @@ public final class CowBehavior {
             return;
         }
 
-        EnvironmentSnapshot environment = EnvironmentManager.snapshot(level, cow.blockPosition(), com.livingecology.data.SpeciesType.COW);
+        EnvironmentSnapshot environment = EnvironmentManager.snapshot(level, cow.blockPosition(), species);
         if (environment.habitability() < 30) MobMindData.addState(cow, StateType.STRESS, 1);
 
         long dayTime = Math.floorMod(level.getDayTime(), 24000L);
