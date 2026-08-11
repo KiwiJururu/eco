@@ -213,11 +213,17 @@ public final class BehaviorUtil {
         Vec3 desired = away.scale(distance).add(bias);
 
         ArrayList<Vec3> candidates = new ArrayList<>();
-        candidates.add(mob.position().add(desired));
-        for (int i = 1; i <= 6; i++) {
-            double angle = (Math.PI / 7.0D) * i;
-            candidates.add(mob.position().add(rotateY(desired, angle)));
-            candidates.add(mob.position().add(rotateY(desired, -angle)));
+        // Confined terrain may not have a safe point at the full desired radius. Test bounded
+        // shorter arcs before giving up so a retreat can still make progress without relaxing
+        // the loaded-chunk, hazard or solid-ground requirements below.
+        for (double scale : new double[]{1.0D, 0.75D, 0.50D}) {
+            Vec3 scaled = desired.scale(scale);
+            candidates.add(mob.position().add(scaled));
+            for (int i = 1; i <= 6; i++) {
+                double angle = (Math.PI / 7.0D) * i;
+                candidates.add(mob.position().add(rotateY(scaled, angle)));
+                candidates.add(mob.position().add(rotateY(scaled, -angle)));
+            }
         }
 
         Vec3 best = mob.position();
