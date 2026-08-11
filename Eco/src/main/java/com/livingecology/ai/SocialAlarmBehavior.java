@@ -10,6 +10,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.animal.camel.Camel;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,13 +28,18 @@ public final class SocialAlarmBehavior {
     private SocialAlarmBehavior() {}
 
     public static void tick(Mob mob, ServerLevel level, SpeciesProfile profile) {
-        boolean passiveHerd = profile.behaviorFamily() == BehaviorFamily.PASSIVE_HERD;
+        Optional<PassiveLandSpeciesPolicy> passiveLand = PassiveLandSpeciesPolicy.of(profile.species());
+        boolean passiveHerd = profile.behaviorFamily() == BehaviorFamily.PASSIVE_HERD
+                && passiveLand.isEmpty();
         boolean auditedAquatic = AquaticSpeciesPolicy.of(profile.species())
                 .map(AquaticSpeciesPolicy::acceptsSocialAlarm).orElse(false);
         boolean auditedFlying = FlyingColonySpeciesPolicy.of(profile.species())
                 .map(FlyingColonySpeciesPolicy::acceptsSocialAlarm).orElse(false);
-        if (!passiveHerd && !auditedAquatic && !auditedFlying) return;
+        boolean auditedPassiveLand = passiveLand.map(PassiveLandSpeciesPolicy::acceptsSocialAlarm)
+                .orElse(false);
+        if (!passiveHerd && !auditedAquatic && !auditedFlying && !auditedPassiveLand) return;
         if (mob instanceof TamableAnimal tame && tame.isTame()) return;
+        if (mob instanceof AbstractHorse horse && !(horse instanceof Camel) && horse.isTamed()) return;
         if (MobMindData.resolveThreat(mob, level).isPresent()) return;
 
         int social = MobMindData.getAttribute(mob, AttributeType.SOCIABILITY);

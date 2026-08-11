@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.animal.camel.Camel;
 import net.minecraft.world.phys.AABB;
 
 import java.util.HashSet;
@@ -43,7 +44,8 @@ public final class ReproductionManager {
 
     private static int triggerEligiblePairs(ServerLevel level, AABB bounds, Set<Integer> handled) {
         int startedPairs = 0;
-        List<Animal> candidates = level.getEntitiesOfClass(Animal.class, bounds, ReproductionManager::eligibleBase);
+        List<Animal> candidates = level.getEntitiesOfClass(Animal.class, bounds,
+                ReproductionManager::isEligibleBase);
         for (Animal first : candidates) {
             if (!handled.add(first.getId())) continue;
             SpeciesType species = SpeciesType.from(first).orElse(null);
@@ -70,7 +72,7 @@ public final class ReproductionManager {
             Animal mate = candidates.stream()
                     .filter(other -> other != first && !handled.contains(other.getId()))
                     .filter(other -> species.matches(other))
-                    .filter(ReproductionManager::eligibleBase)
+                    .filter(ReproductionManager::isEligibleBase)
                     .filter(other -> first.distanceToSqr(other) <= 14.0D * 14.0D)
                     .filter(other -> {
                         MobMindData.initialize(other, level);
@@ -100,11 +102,14 @@ public final class ReproductionManager {
         return startedPairs;
     }
 
-    private static boolean eligibleBase(Animal animal) {
+    /** Shared base gate kept public for integration/debug checks of vanilla ownership states. */
+    public static boolean isEligibleBase(Animal animal) {
         if (!animal.isAlive() || animal.isBaby() || animal.isInLove()) return false;
-        if (animal.isPassenger() || animal.isLeashed() || animal.isPersistenceRequired()) return false;
+        if (animal.isPassenger() || animal.isVehicle() || animal.isLeashed()
+                || animal.isPersistenceRequired()) return false;
         if (animal instanceof TamableAnimal tame && tame.isTame()) return false;
-        if (animal instanceof AbstractHorse horse && horse.isTamed()) return false;
+        // Camel overrides isTamed() to always return true because it has no taming/owner phase.
+        if (animal instanceof AbstractHorse horse && !(horse instanceof Camel) && horse.isTamed()) return false;
         return MobMindData.supports(animal);
     }
 }

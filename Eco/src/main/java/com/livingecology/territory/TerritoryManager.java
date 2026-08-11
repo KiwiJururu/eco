@@ -19,6 +19,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.animal.camel.Camel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -26,6 +27,8 @@ import net.minecraft.world.phys.AABB;
 import java.util.*;
 
 public final class TerritoryManager {
+    private static final double BEE_COLONY_JOIN_DISTANCE = 48.0D;
+
     private TerritoryManager() {}
 
     public static void tickLevel(ServerLevel level) {
@@ -53,7 +56,7 @@ public final class TerritoryManager {
 
         TerritoryRecord nearby = data.near(mob.blockPosition()).stream()
                 .filter(r -> r.species() == species && r.state() != TerritoryState.ABANDONED)
-                .filter(r -> r.center().distSqr(mob.blockPosition()) <= sqr((r.radiusChunks() + 3) * 16.0D))
+                .filter(r -> r.center().distSqr(mob.blockPosition()) <= sqr(territoryJoinDistance(species, r)))
                 .min(Comparator.comparingDouble(r -> r.center().distSqr(mob.blockPosition())))
                 .orElse(null);
         if (nearby != null) {
@@ -627,7 +630,16 @@ public final class TerritoryManager {
 
     private static boolean isPlayerBound(Mob mob) {
         if (mob instanceof TamableAnimal tame && tame.isTame()) return true;
-        return mob instanceof AbstractHorse horse && horse.isTamed();
+        return mob instanceof AbstractHorse horse && !(horse instanceof Camel) && horse.isTamed();
+    }
+
+    private static double territoryJoinDistance(SpeciesType species, TerritoryRecord territory) {
+        double defaultDistance = (territory.radiusChunks() + 3) * 16.0D;
+        // Hive recentering is bounded to the same distance. Letting a bee join a farther
+        // record would permanently associate it with a colony that its hive cannot anchor.
+        return species == SpeciesType.BEE
+                ? Math.min(defaultDistance, BEE_COLONY_JOIN_DISTANCE)
+                : defaultDistance;
     }
 
     public static void setSimulationScale(ServerLevel level, double scale) {
