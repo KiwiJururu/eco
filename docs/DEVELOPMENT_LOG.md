@@ -225,3 +225,30 @@ Validated gameplay commit: `dbd85b9a85240f164b796f394a651929b0c782c0`
 - no new textures/assets required; human fuse, jump, flight, Brain and lava-riding pacing QA
   remains PENDING
 - next planned gameplay batch: issue #13, End, cave and special creatures
+
+## End, cave and special ecology 0.2.7
+
+Validated gameplay commit: `7f55e95f218e6c666b385e7da8eabacdea3f9bea`
+
+- completed issue #13 scope for Enderman, Endermite, Silverfish and Shulker
+- added an explicit per-species ownership/community/domain policy and
+  `docs/END_CAVE_SPECIAL_AI_AUDIT.md`
+- removed all four species from generic patrol, navigation recovery and ecological target
+  selection so special vanilla movement and combat state machines remain authoritative
+- preserved Enderman stare, persistent anger, teleport, carried-block state and native Endermite
+  target priority; the symmetric natural relation remains `WARLIKE` at rivalry 100
+- corrected Endermite's ecological profile from a persistent nest to transient solitary ecology,
+  preserving its lifetime/despawn contract even when several Endermites are nearby
+- retained persistent nest territory only for Silverfish and added bounded local threat memory for
+  at most eight loaded nestmates without assigning their combat targets
+- preserved Silverfish hide-in-block, wake-friends and melee goals by issuing no ecological paths
+- preserved Shulker attachment face, peek amount, variant, ranged target, teleport and duplication
+  state machine under a strict `STATIC` movement-domain contract
+- validated Creative target/memory sanitization without changing Shulker special state
+- compileJava PASS on Java 17
+- JUnit PASS (55/55)
+- Forge GameTests PASS (56/56)
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human Enderman teleport/block handling, Silverfish emergence and
+  Shulker peek/teleport pacing QA remains PENDING
+- next planned gameplay batch: issue #14, villages and golems

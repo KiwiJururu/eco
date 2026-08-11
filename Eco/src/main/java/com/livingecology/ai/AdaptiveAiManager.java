@@ -62,6 +62,8 @@ public final class AdaptiveAiManager {
                             UndeadCombatBehavior.tick(mob, level);
                     case CREEPER, SLIME, MAGMA_CUBE, BLAZE, GHAST, PHANTOM, VEX,
                             HOGLIN, ZOGLIN, STRIDER -> SpecialHostileNetherBehavior.tick(mob, level);
+                    case ENDERMAN, ENDERMITE, SILVERFISH, SHULKER ->
+                            EndCaveSpecialBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }
