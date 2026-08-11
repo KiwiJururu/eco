@@ -140,3 +140,29 @@ Validated gameplay commit: `72cde05eb315dbffe93f6e996b2f8dbeeae34d32`
 - build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
 - no new textures/assets required; human land-herd naturalness, pacing and footprint QA remains PENDING
 - next planned gameplay batch: issue #10, terrestrial predators
+
+## Terrestrial predators and independent animals 0.2.4
+
+Validated gameplay commit: `13d45b9b4f8f846cf0c9ee7964d72037c4c5436b`
+
+- completed issue #10 scope for Fox, Ocelot, Cat, Polar Bear and Panda
+- added an explicit per-species vanilla ownership policy and
+  `docs/TERRESTRIAL_PREDATOR_AI_AUDIT.md`
+- removed the batch from generic predator targeting/retreat behavior so ecology never invents
+  aggression beyond vanilla prey, trusted defense, owner defense or neutral repertoires
+- preserved Fox trusted UUIDs, held items, sleeping/stalking/pouncing; Ocelot trust/tempt/avoid;
+  Cat tame/owner/sit/bed/collar; Polar Bear anger/standing/cub protection; and Panda genes plus
+  sit/eat/sneeze/roll action states
+- added low-health/fear retreat and distant home return only for idle, state-safe actors
+- improved the shared safe-retreat planner with bounded 75% and 50% fallback arcs for confined
+  loaded terrain without relaxing hazard, fluid or solid-ground checks
+- validated bordered geometric predator overlap and acquired rivalry while proving that neither
+  condition forces a combat target
+- corrected two GameTest assumptions: ground pathfinding requires a pre-first-tick Ocelot fixture
+  to be settled on the known floor, and `FakePlayer` is unsuitable as a neutral-mob target fixture
+- compileJava PASS on Java 17
+- JUnit PASS (37/37)
+- Forge GameTests PASS (36/36)
+- build and re-obfuscated JAR PASS (`livingecology-0.1.0.jar`)
+- no new textures/assets required; human stalking, retreat and overlap pacing QA remains PENDING
+- next planned gameplay batch: issue #11, skeleton and undead combat families
