@@ -56,6 +56,7 @@ public final class AdaptiveAiManager {
                     case PIGLIN, PIGLIN_BRUTE -> PiglinSocietyBehavior.tick(mob, level);
                     case EVOKER, PILLAGER, VINDICATOR, ILLUSIONER, RAVAGER, WITCH -> IllagerSocietyBehavior.tick(mob, level);
                     case GUARDIAN, ELDER_GUARDIAN -> GuardianSocietyBehavior.tick(mob, level);
+                    case WARDEN, WITHER, ENDER_DRAGON, GIANT, SKELETON_HORSE, ZOMBIE_HORSE -> BossSpecialBehavior.tick(mob, level);
                     case CREEPER, SLIME, MAGMA_CUBE, BLAZE, GHAST, PHANTOM, VEX,
                             HOGLIN, ZOGLIN, STRIDER -> SpecialHostileNetherBehavior.tick(mob, level);
                     case ENDERMAN, ENDERMITE, SILVERFISH, SHULKER -> EndCaveSpecialBehavior.tick(mob, level);
