@@ -88,7 +88,7 @@ public final class PiglinSocietyEcologyGameTests {
     }
 
     @GameTest(template = "test_arena")
-    public static void piglinBruteBrainHomeTargetAndPathRemainVanillaOwned(GameTestHelper helper) {
+    public static void piglinBruteBrainHomeAttackTargetAndPathRemainVanillaOwned(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         PiglinBrute brute = spawn(helper, EntityType.PIGLIN_BRUTE, 4, 1, 4);
         WitherSkeleton target = spawn(helper, EntityType.WITHER_SKELETON, 9, 1, 4);
@@ -98,7 +98,7 @@ public final class PiglinSocietyEcologyGameTests {
         BlockPos homePos = helper.absolutePos(new BlockPos(4, 1, 4));
         GlobalPos home = GlobalPos.of(level.dimension(), homePos);
         brute.getBrain().setMemory(MemoryModuleType.HOME, home);
-        brute.setTarget(target);
+        brute.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target);
         brute.setOnGround(true);
         PathNavigation navigation = brute.getNavigation();
         Path path = navigation.createPath(target.blockPosition(), 0);
@@ -110,8 +110,9 @@ public final class PiglinSocietyEcologyGameTests {
         CompoundTag after = new CompoundTag();
         brute.addAdditionalSaveData(after);
 
-        helper.assertTrue(brute.getTarget() == target,
-                "Living Ecology changed Piglin Brute legal combat target");
+        helper.assertTrue(brute.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET)
+                        .filter(entity -> entity == target).isPresent(),
+                "Living Ecology changed Piglin Brute Brain attack target");
         helper.assertTrue(before.getBoolean("IsImmuneToZombification")
                         == after.getBoolean("IsImmuneToZombification"),
                 "Living Ecology changed Piglin Brute zombification lifecycle state");
