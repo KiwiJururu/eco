@@ -17,7 +17,7 @@ public final class AdaptiveAiManager {
     public static void tickLevel(ServerLevel level) {
         if (level.players().isEmpty()) return;
         long now = level.getGameTime();
-        if ((now & 3L) != 0L) return; // broad scan at 5 Hz; individual brains are additionally staggered
+        if ((now & 3L) != 0L) return;
         long brainStep = now / 4L;
         Set<Integer> handled = new HashSet<>();
 
@@ -27,21 +27,15 @@ public final class AdaptiveAiManager {
                 MobMindData.initialize(mob, level);
                 MobMindData.decayStates(mob, level);
                 BehaviorUtil.sanitizeCombatTarget(mob, level);
-
                 if (mob.getTarget() != null) MobMindData.setResting(mob, false);
                 if (MobMindData.isResting(mob)) mob.getNavigation().stop();
 
                 int interval = Math.max(2, MobMindData.thinkInterval(mob) / 3);
                 if (Math.floorMod(brainStep + mob.getId(), interval) != 0L) continue;
-
                 SpeciesType species = SpeciesType.from(mob).orElse(null);
                 if (species == null) continue;
                 SpeciesProfile profile = SpeciesProfile.of(species);
-
-                // Short local communication pass before the species controller. This lets passive herd
-                // animals react to information from visible nearby groupmates without a global shared brain.
                 SocialAlarmBehavior.tick(mob, level, profile);
-
                 if (profile.formsPersistentTerritory(MobMindData.isBoss(mob))) {
                     TerritoryManager.ensureTerritory(mob, level);
                     if (MobMindData.isBoss(mob)) TerritoryManager.boostBossTerritory(mob, level);
@@ -58,17 +52,14 @@ public final class AdaptiveAiManager {
                     case SHEEP, PIG, CHICKEN, RABBIT, HORSE, DONKEY, MULE, CAMEL, GOAT,
                             LLAMA, SNIFFER -> PassiveLandBehavior.tick(mob, level);
                     case FOX, OCELOT, CAT, POLAR_BEAR, PANDA -> IndependentLandBehavior.tick(mob, level);
-                    case SKELETON, STRAY, WITHER_SKELETON, ZOMBIFIED_PIGLIN ->
-                            UndeadCombatBehavior.tick(mob, level);
+                    case SKELETON, STRAY, WITHER_SKELETON, ZOMBIFIED_PIGLIN -> UndeadCombatBehavior.tick(mob, level);
                     case PIGLIN, PIGLIN_BRUTE -> PiglinSocietyBehavior.tick(mob, level);
-                    case EVOKER, PILLAGER, VINDICATOR, ILLUSIONER, RAVAGER, WITCH ->
-                            IllagerSocietyBehavior.tick(mob, level);
+                    case EVOKER, PILLAGER, VINDICATOR, ILLUSIONER, RAVAGER, WITCH -> IllagerSocietyBehavior.tick(mob, level);
+                    case GUARDIAN, ELDER_GUARDIAN -> GuardianSocietyBehavior.tick(mob, level);
                     case CREEPER, SLIME, MAGMA_CUBE, BLAZE, GHAST, PHANTOM, VEX,
                             HOGLIN, ZOGLIN, STRIDER -> SpecialHostileNetherBehavior.tick(mob, level);
-                    case ENDERMAN, ENDERMITE, SILVERFISH, SHULKER ->
-                            EndCaveSpecialBehavior.tick(mob, level);
-                    case VILLAGER, WANDERING_TRADER, IRON_GOLEM, SNOW_GOLEM, TRADER_LLAMA ->
-                            VillageGuardianBehavior.tick(mob, level);
+                    case ENDERMAN, ENDERMITE, SILVERFISH, SHULKER -> EndCaveSpecialBehavior.tick(mob, level);
+                    case VILLAGER, WANDERING_TRADER, IRON_GOLEM, SNOW_GOLEM, TRADER_LLAMA -> VillageGuardianBehavior.tick(mob, level);
                     default -> GenericBehavior.tick(mob, level, profile);
                 }
             }
