@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: 767ea290813c88e7488f6ec893b02e6cfa6abf76
-  version: 0.3.0-development
+  gameplay_source_commit: 170b509d1cf0683dba061a76364befbc8c4eb9c4
+  version: 0.3.1-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 83
+  forge_gametest_count: 90
   build: PASS
   jar_artifact: PASS
 
@@ -120,6 +120,12 @@ validated_features:
   - Illager internal symbiotic affinity and WARLIKE Villager/Iron Golem relations
   - acquired Illager-village rivalry and territorial tension from real conflict/overlap
   - cooperative alarm target-ownership fix for audited Village/Golem, Piglin and Illager societies
+  - Guardian and Elder Guardian water-domain vanilla combat/swim ownership policies
+  - Guardian beam target ownership and dry-land navigation exclusion
+  - Elder Guardian influence expressed as bounded local memory rather than raw stat inflation
+  - Guardian/Elder monument affinity with species-scoped persistent structure territories
+  - bounded Guardian memory at eight receivers and Elder influence at twelve
+  - water-only idle monument return with loaded-core safety
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -129,8 +135,8 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 17
-  active_batch: guardian_society
+  active_issue: 18
+  active_batch: bosses_special
   instruction: complete_issue_before_advancing
 
 completed_issues:
@@ -144,9 +150,9 @@ completed_issues:
   villages_golems: 14
   piglin_society: 15
   illager_society: 16
+  guardian_society: 17
 
 backlog_issues:
-  guardian_society: 17
   bosses_special: 18
   final_regression: 19
 
