@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: 3d47dfc6432cf1a3058300d02f97f9b70e7fe246
-  version: 0.2.9-development
+  gameplay_source_commit: 767ea290813c88e7488f6ec893b02e6cfa6abf76
+  version: 0.3.0-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 71
+  forge_gametest_count: 83
   build: PASS
   jar_artifact: PASS
 
@@ -114,6 +114,12 @@ validated_features:
   - Piglin versus Wither Skeleton WARLIKE rivalry retained as context without invented targets
   - Zombified Piglin kept separate from living Piglin society while preserving undead anger ownership
   - Nether community ecology validation without ecological footprints or reproduction
+  - Illager per-role vanilla raid/combat ownership policies
+  - Pillager crossbow, Vindicator Johnny/axe, Evoker/Vex, Witch potion, Ravager rider and Illusioner bow state preservation
+  - bounded cross-role Illager threat memory without target/path assignment
+  - Illager internal symbiotic affinity and WARLIKE Villager/Iron Golem relations
+  - acquired Illager-village rivalry and territorial tension from real conflict/overlap
+  - cooperative alarm target-ownership fix for audited Village/Golem, Piglin and Illager societies
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -123,8 +129,8 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 16
-  active_batch: illager_society
+  active_issue: 17
+  active_batch: guardian_society
   instruction: complete_issue_before_advancing
 
 completed_issues:
@@ -137,9 +143,9 @@ completed_issues:
   end_cave_special: 13
   villages_golems: 14
   piglin_society: 15
+  illager_society: 16
 
 backlog_issues:
-  illager_society: 16
   guardian_society: 17
   bosses_special: 18
   final_regression: 19
