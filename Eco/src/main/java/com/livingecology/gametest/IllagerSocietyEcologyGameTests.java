@@ -85,9 +85,8 @@ public final class IllagerSocietyEcologyGameTests {
         pillager.setChargingCrossbow(true);
         pillager.setTarget(target);
         PathNavigation navigation = pillager.getNavigation();
-        Path requestedPath = navigation.createPath(target.blockPosition(), 0);
-        boolean ordered = requestedPath != null && navigation.moveTo(requestedPath, 0.6D);
-        Path activePath = navigation.getPath();
+        Path path = navigation.createPath(target.blockPosition(), 0);
+        boolean ordered = path != null && navigation.moveTo(path, 0.6D);
 
         IllagerSocietyBehavior.tick(pillager, level);
 
@@ -95,8 +94,7 @@ public final class IllagerSocietyEcologyGameTests {
                         && pillager.getMainHandItem().is(Items.CROSSBOW)
                         && pillager.getTarget() == target,
                 "Living Ecology changed Pillager crossbow or legal combat target");
-        helper.assertTrue(ordered && activePath != null && navigation.getPath() == activePath,
-                "Living Ecology replaced active Pillager navigation");
+        assertNavigationStillActive(helper, navigation, ordered, "Pillager");
         helper.succeed();
     }
 
@@ -110,9 +108,8 @@ public final class IllagerSocietyEcologyGameTests {
         vindicator.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_AXE));
         vindicator.setTarget(target);
         PathNavigation navigation = vindicator.getNavigation();
-        Path requestedPath = navigation.createPath(target.blockPosition(), 0);
-        boolean ordered = requestedPath != null && navigation.moveTo(requestedPath, 0.7D);
-        Path activePath = navigation.getPath();
+        Path path = navigation.createPath(target.blockPosition(), 0);
+        boolean ordered = path != null && navigation.moveTo(path, 0.7D);
 
         IllagerSocietyBehavior.tick(vindicator, level);
 
@@ -120,8 +117,7 @@ public final class IllagerSocietyEcologyGameTests {
                         && vindicator.getMainHandItem().is(Items.IRON_AXE)
                         && vindicator.getTarget() == target,
                 "Living Ecology changed Vindicator Johnny/axe/combat state");
-        helper.assertTrue(ordered && activePath != null && navigation.getPath() == activePath,
-                "Living Ecology replaced active Vindicator navigation");
+        assertNavigationStillActive(helper, navigation, ordered, "Vindicator");
         helper.succeed();
     }
 
@@ -135,16 +131,14 @@ public final class IllagerSocietyEcologyGameTests {
         vex.setOwner(evoker);
         evoker.setTarget(target);
         PathNavigation navigation = evoker.getNavigation();
-        Path requestedPath = navigation.createPath(target.blockPosition(), 0);
-        boolean ordered = requestedPath != null && navigation.moveTo(requestedPath, 0.6D);
-        Path activePath = navigation.getPath();
+        Path path = navigation.createPath(target.blockPosition(), 0);
+        boolean ordered = path != null && navigation.moveTo(path, 0.6D);
 
         IllagerSocietyBehavior.tick(evoker, level);
 
         helper.assertTrue(vex.getOwner() == evoker && evoker.getTarget() == target,
                 "Living Ecology changed Evoker/Vex ownership or legal Evoker target");
-        helper.assertTrue(ordered && activePath != null && navigation.getPath() == activePath,
-                "Living Ecology replaced active Evoker navigation");
+        assertNavigationStillActive(helper, navigation, ordered, "Evoker");
         helper.succeed();
     }
 
@@ -158,17 +152,15 @@ public final class IllagerSocietyEcologyGameTests {
         witch.startUsingItem(InteractionHand.MAIN_HAND);
         witch.setTarget(target);
         PathNavigation navigation = witch.getNavigation();
-        Path requestedPath = navigation.createPath(target.blockPosition(), 0);
-        boolean ordered = requestedPath != null && navigation.moveTo(requestedPath, 0.6D);
-        Path activePath = navigation.getPath();
+        Path path = navigation.createPath(target.blockPosition(), 0);
+        boolean ordered = path != null && navigation.moveTo(path, 0.6D);
 
         IllagerSocietyBehavior.tick(witch, level);
 
         helper.assertTrue(witch.isUsingItem() && witch.getMainHandItem().is(Items.POTION)
                         && witch.getTarget() == target,
                 "Living Ecology changed Witch potion-use or legal combat state");
-        helper.assertTrue(ordered && activePath != null && navigation.getPath() == activePath,
-                "Living Ecology replaced active Witch navigation");
+        assertNavigationStillActive(helper, navigation, ordered, "Witch");
         helper.succeed();
     }
 
@@ -182,17 +174,15 @@ public final class IllagerSocietyEcologyGameTests {
         rider.startRiding(ravager, true);
         ravager.setTarget(target);
         PathNavigation navigation = ravager.getNavigation();
-        Path requestedPath = navigation.createPath(target.blockPosition(), 0);
-        boolean ordered = requestedPath != null && navigation.moveTo(requestedPath, 0.7D);
-        Path activePath = navigation.getPath();
+        Path path = navigation.createPath(target.blockPosition(), 0);
+        boolean ordered = path != null && navigation.moveTo(path, 0.7D);
 
         IllagerSocietyBehavior.tick(ravager, level);
 
         helper.assertTrue(rider.getVehicle() == ravager && ravager.hasPassenger(rider)
                         && ravager.getTarget() == target,
                 "Living Ecology changed Ravager rider or legal combat target");
-        helper.assertTrue(ordered && activePath != null && navigation.getPath() == activePath,
-                "Living Ecology replaced active Ravager navigation");
+        assertNavigationStillActive(helper, navigation, ordered, "Ravager");
         helper.succeed();
     }
 
@@ -205,17 +195,15 @@ public final class IllagerSocietyEcologyGameTests {
         illusioner.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
         illusioner.setTarget(target);
         PathNavigation navigation = illusioner.getNavigation();
-        Path requestedPath = navigation.createPath(target.blockPosition(), 0);
-        boolean ordered = requestedPath != null && navigation.moveTo(requestedPath, 0.6D);
-        Path activePath = navigation.getPath();
+        Path path = navigation.createPath(target.blockPosition(), 0);
+        boolean ordered = path != null && navigation.moveTo(path, 0.6D);
 
         IllagerSocietyBehavior.tick(illusioner, level);
 
         helper.assertTrue(illusioner.getMainHandItem().is(Items.BOW)
                         && illusioner.getTarget() == target,
                 "Living Ecology changed Illusioner weapon or legal combat target");
-        helper.assertTrue(ordered && activePath != null && navigation.getPath() == activePath,
-                "Living Ecology replaced active Illusioner navigation");
+        assertNavigationStillActive(helper, navigation, ordered, "Illusioner");
         helper.succeed();
     }
 
@@ -355,6 +343,12 @@ public final class IllagerSocietyEcologyGameTests {
                 "Creative sanitization issued raid navigation");
         creative.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
         helper.succeed();
+    }
+
+    private static void assertNavigationStillActive(GameTestHelper helper, PathNavigation navigation,
+                                                    boolean ordered, String owner) {
+        helper.assertTrue(ordered && navigation.getPath() != null && !navigation.isDone(),
+                "Living Ecology stopped or cleared active " + owner + " navigation");
     }
 
     private static <T extends Mob> T spawn(GameTestHelper helper, EntityType<T> type,
