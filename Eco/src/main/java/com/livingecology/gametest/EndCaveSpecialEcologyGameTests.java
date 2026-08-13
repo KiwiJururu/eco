@@ -133,6 +133,9 @@ public final class EndCaveSpecialEcologyGameTests {
         source.setTarget(target);
 
         EndCaveSpecialBehavior.tick(source, level);
+        // A repeated GameTest run may find an already persisted Silverfish territory at this
+        // template position. Tick the receiver too so it explicitly joins that existing nest.
+        EndCaveSpecialBehavior.tick(receiver, level);
         TerritoryRecord territory = TerritoryManager.ensureTerritory(source, level);
 
         helper.assertTrue(territory != null

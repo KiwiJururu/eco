@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: 7f55e95f218e6c666b385e7da8eabacdea3f9bea
-  version: 0.2.7-development
+  gameplay_source_commit: b1faea5cb27ad69f683b8ed2ceb255343f14ad49
+  version: 0.2.8-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 56
+  forge_gametest_count: 64
   build: PASS
   jar_artifact: PASS
 
@@ -96,6 +96,16 @@ validated_features:
   - Shulker attachment, peek, teleport, bullet and duplication ownership retained
   - STATIC movement domain prevents ecological Shulker navigation
   - End and cave habitat response validation
+  - village/trader/golem per-species vanilla AI ownership policies
+  - Villager Brain, schedule, profession, HOME memory and trading preservation
+  - Wandering Trader and Trader Llama transient despawn/travel preservation
+  - Iron Golem persistent anger, creator, flower and melee-defense preservation
+  - Snow Golem pumpkin, ranged-defense and snow-trail ownership preservation
+  - bounded local village and trader-caravan defense memory without forced targets
+  - Villager and Iron Golem maximum symbiotic affinity retained
+  - persistent communities limited to residents and profiled guardians
+  - player-built structure safety through zero ecological footprint policy
+  - persistent-world GameTest rerun determinism for community association
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -105,8 +115,8 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 14
-  active_batch: villages_golems
+  active_issue: 15
+  active_batch: piglin_society
   instruction: complete_issue_before_advancing
 
 completed_issues:
@@ -117,9 +127,9 @@ completed_issues:
   skeleton_undead_combat: 11
   common_hostile_nether: 12
   end_cave_special: 13
+  villages_golems: 14
 
 backlog_issues:
-  villages_golems: 14
   piglin_society: 15
   illager_society: 16
   guardian_society: 17
