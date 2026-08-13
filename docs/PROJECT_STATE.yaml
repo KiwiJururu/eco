@@ -13,12 +13,12 @@ branches:
 
 validated_baseline:
   ref: development/stable
-  gameplay_source_commit: b1faea5cb27ad69f683b8ed2ceb255343f14ad49
-  version: 0.2.8-development
+  gameplay_source_commit: 3d47dfc6432cf1a3058300d02f97f9b70e7fe246
+  version: 0.2.9-development
   compileJava: PASS
   junit: PASS
   forge_gametests: PASS
-  forge_gametest_count: 64
+  forge_gametest_count: 71
   build: PASS
   jar_artifact: PASS
 
@@ -106,6 +106,14 @@ validated_features:
   - persistent communities limited to residents and profiled guardians
   - player-built structure safety through zero ecological footprint policy
   - persistent-world GameTest rerun determinism for community association
+  - Piglin and Piglin Brute per-species vanilla Brain ownership policies
+  - Piglin admiration, gold/barter, hunt, fear/avoid and active navigation preservation
+  - Piglin Brute HOME, Brain attack-target, Bastion guard and navigation preservation
+  - living Piglin society local bounded threat memory without target/path takeover
+  - Piglin and Piglin Brute strong symbiotic affinity with species-scoped communities
+  - Piglin versus Wither Skeleton WARLIKE rivalry retained as context without invented targets
+  - Zombified Piglin kept separate from living Piglin society while preserving undead anger ownership
+  - Nether community ecology validation without ecological footprints or reproduction
   - Creative/Spectator hostile-target exclusion
   - territory persistence core
   - reproduction/capacity core for vanilla-love species
@@ -115,8 +123,8 @@ validated_features:
 
 current_priority:
   phase: gameplay
-  active_issue: 15
-  active_batch: piglin_society
+  active_issue: 16
+  active_batch: illager_society
   instruction: complete_issue_before_advancing
 
 completed_issues:
@@ -128,9 +136,9 @@ completed_issues:
   common_hostile_nether: 12
   end_cave_special: 13
   villages_golems: 14
+  piglin_society: 15
 
 backlog_issues:
-  piglin_society: 15
   illager_society: 16
   guardian_society: 17
   bosses_special: 18
