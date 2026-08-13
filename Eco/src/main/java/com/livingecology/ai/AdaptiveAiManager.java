@@ -61,6 +61,8 @@ public final class AdaptiveAiManager {
                     case SKELETON, STRAY, WITHER_SKELETON, ZOMBIFIED_PIGLIN ->
                             UndeadCombatBehavior.tick(mob, level);
                     case PIGLIN, PIGLIN_BRUTE -> PiglinSocietyBehavior.tick(mob, level);
+                    case EVOKER, PILLAGER, VINDICATOR, ILLUSIONER, RAVAGER, WITCH ->
+                            IllagerSocietyBehavior.tick(mob, level);
                     case CREEPER, SLIME, MAGMA_CUBE, BLAZE, GHAST, PHANTOM, VEX,
                             HOGLIN, ZOGLIN, STRIDER -> SpecialHostileNetherBehavior.tick(mob, level);
                     case ENDERMAN, ENDERMITE, SILVERFISH, SHULKER ->
