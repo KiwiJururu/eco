@@ -77,11 +77,11 @@ public final class PiglinSocietyEcologyGameTests {
         helper.assertTrue(piglin.getBrain().getMemory(MemoryModuleType.AVOID_TARGET)
                         .filter(entity -> entity == avoid).isPresent(),
                 "Living Ecology changed Piglin fear/avoid Brain ownership");
-        helper.assertTrue(ItemStack.isSameItemSameTags(gold, piglin.getOffhandItem())
-                        && before.getBoolean("IsImmuneToZombification")
-                        && before.getBoolean("IsImmuneToZombification")
+        helper.assertTrue(ItemStack.isSameItemSameTags(gold, piglin.getOffhandItem()),
+                "Living Ecology changed Piglin gold/barter state");
+        helper.assertTrue(before.getBoolean("IsImmuneToZombification")
                         == after.getBoolean("IsImmuneToZombification"),
-                "Living Ecology changed Piglin gold/barter or zombification lifecycle state");
+                "Living Ecology changed Piglin zombification lifecycle state");
         helper.assertTrue(ordered && path != null && navigation.getPath() == path,
                 "Living Ecology replaced an active Piglin Brain navigation path");
         helper.succeed();
@@ -110,11 +110,11 @@ public final class PiglinSocietyEcologyGameTests {
         CompoundTag after = new CompoundTag();
         brute.addAdditionalSaveData(after);
 
-        helper.assertTrue(brute.getTarget() == target
-                        && before.getBoolean("IsImmuneToZombification")
-                        && before.getBoolean("IsImmuneToZombification")
+        helper.assertTrue(brute.getTarget() == target,
+                "Living Ecology changed Piglin Brute legal combat target");
+        helper.assertTrue(before.getBoolean("IsImmuneToZombification")
                         == after.getBoolean("IsImmuneToZombification"),
-                "Living Ecology changed Piglin Brute legal combat or zombification state");
+                "Living Ecology changed Piglin Brute zombification lifecycle state");
         helper.assertTrue(brute.getBrain().getMemory(MemoryModuleType.HOME)
                         .filter(home::equals).isPresent(),
                 "Living Ecology changed Piglin Brute Bastion HOME memory");
