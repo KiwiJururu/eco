@@ -14,6 +14,7 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
@@ -61,8 +62,12 @@ public final class PiglinSocietyEcologyGameTests {
         BlockPos destination = helper.absolutePos(new BlockPos(8, 1, 4));
         Path path = navigation.createPath(destination, 0);
         boolean ordered = path != null && navigation.moveTo(path, 0.5D);
+        CompoundTag before = new CompoundTag();
+        piglin.addAdditionalSaveData(before);
 
         PiglinSocietyBehavior.tick(piglin, level);
+        CompoundTag after = new CompoundTag();
+        piglin.addAdditionalSaveData(after);
 
         helper.assertTrue(piglin.getBrain().getMemory(MemoryModuleType.ADMIRING_ITEM)
                         .orElse(false)
@@ -73,7 +78,9 @@ public final class PiglinSocietyEcologyGameTests {
                         .filter(entity -> entity == avoid).isPresent(),
                 "Living Ecology changed Piglin fear/avoid Brain ownership");
         helper.assertTrue(ItemStack.isSameItemSameTags(gold, piglin.getOffhandItem())
-                        && piglin.isImmuneToZombification(),
+                        && before.getBoolean("IsImmuneToZombification")
+                        && before.getBoolean("IsImmuneToZombification")
+                        == after.getBoolean("IsImmuneToZombification"),
                 "Living Ecology changed Piglin gold/barter or zombification lifecycle state");
         helper.assertTrue(ordered && path != null && navigation.getPath() == path,
                 "Living Ecology replaced an active Piglin Brain navigation path");
@@ -96,10 +103,17 @@ public final class PiglinSocietyEcologyGameTests {
         PathNavigation navigation = brute.getNavigation();
         Path path = navigation.createPath(target.blockPosition(), 0);
         boolean ordered = path != null && navigation.moveTo(path, 0.6D);
+        CompoundTag before = new CompoundTag();
+        brute.addAdditionalSaveData(before);
 
         PiglinSocietyBehavior.tick(brute, level);
+        CompoundTag after = new CompoundTag();
+        brute.addAdditionalSaveData(after);
 
-        helper.assertTrue(brute.getTarget() == target && brute.isImmuneToZombification(),
+        helper.assertTrue(brute.getTarget() == target
+                        && before.getBoolean("IsImmuneToZombification")
+                        && before.getBoolean("IsImmuneToZombification")
+                        == after.getBoolean("IsImmuneToZombification"),
                 "Living Ecology changed Piglin Brute legal combat or zombification state");
         helper.assertTrue(brute.getBrain().getMemory(MemoryModuleType.HOME)
                         .filter(home::equals).isPresent(),
