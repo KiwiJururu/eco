@@ -3,6 +3,9 @@ package com.livingecology.event;
 import com.livingecology.LivingEcology;
 import com.livingecology.ai.AdaptiveAiManager;
 import com.livingecology.ai.BehaviorUtil;
+import com.livingecology.ai.IllagerSocietySpeciesPolicy;
+import com.livingecology.ai.PiglinSocietySpeciesPolicy;
+import com.livingecology.ai.VillageGuardianSpeciesPolicy;
 import com.livingecology.command.ModCommands;
 import com.livingecology.data.*;
 import com.livingecology.environment.EnvironmentManager;
@@ -163,9 +166,20 @@ public final class CommonForgeEvents {
             if (!helper.hasLineOfSight(victim) && helper.distanceToSqr(victim) > 49.0D) continue;
             MobMindData.initialize(helper, level);
             MobMindData.rememberThreat(helper, attacker, 8, level);
-            if (canFight(SpeciesProfile.of(helperSpecies).behaviorFamily()) && helper.getTarget() == null) helper.setTarget(attacker);
+            if (canFight(SpeciesProfile.of(helperSpecies).behaviorFamily())
+                    && helper.getTarget() == null
+                    && allowsCooperativeTargetAssignment(helperSpecies)) {
+                helper.setTarget(attacker);
+            }
             TerritoryManager.recordCooperation(helper, victim, level, 1);
         }
+    }
+
+    /** Dedicated low-touch society controllers own no target selection; their vanilla AI keeps that authority. */
+    private static boolean allowsCooperativeTargetAssignment(SpeciesType species) {
+        return VillageGuardianSpeciesPolicy.of(species).isEmpty()
+                && PiglinSocietySpeciesPolicy.of(species).isEmpty()
+                && IllagerSocietySpeciesPolicy.of(species).isEmpty();
     }
 
     private static boolean canFight(BehaviorFamily family) {
